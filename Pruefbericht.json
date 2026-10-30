@@ -1,0 +1,18 @@
+{
+  "original_instances": 29976,
+  "exported_instances": 29981,
+  "scripts": 154,
+  "modified_scripts": 40,
+  "new_modules": 5,
+  "bytes": 30177485,
+  "sha256": "1d432332f8fb68a214552ede53a73377aab4555da1f24f4842266418771d6817",
+  "xml_parse": "PASS",
+  "original_non_source_properties": "PASS",
+  "references": "PASS",
+  "unique_referents": "PASS",
+  "exported_source_compilation": "PASS",
+  "roblox_studio_test": "NOT RUN: Roblox Studio unavailable",
+  "gameplay_assertions": 49,
+  "freecam_gift_assertions": 13,
+  "regression_tests": "PASS (mocked Roblox service boundaries)"
+}
