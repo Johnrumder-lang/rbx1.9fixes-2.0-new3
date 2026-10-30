@@ -1290,7 +1290,7 @@ end
 function CyberService.AdminPsychosis(p: Player, enabled: boolean)
 	if not Items.IsOwner(p) then return end
 	local st = stOf(p)
-	st.psycho = enabled and math.max(st.psycho, 0.65) or 0
+	if not enabled or Cyberware.Load(st.list) <= 0 then st.psycho = 0 end
 	publish(p)
 	p:SetAttribute("CyPsycho", st.psycho > 0 and st.psycho or nil)
 end
@@ -1476,7 +1476,7 @@ function CyberService.Init(d: any)
 					end
 				end
 				-- psychosis
-				if immune(p) then
+				if immune(p) or Cyberware.Load(st.list) <= 0 then
 					st.psycho = 0
 				else
 					local over = Cyberware.Load(st.list) - tolerance(p)

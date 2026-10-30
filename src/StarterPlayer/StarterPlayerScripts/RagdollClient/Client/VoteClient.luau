@@ -153,6 +153,7 @@ function VoteClient.Init()
 	end)
 
 	UserInputService.InputBegan:Connect(function(io, processed)
+		if Input.IsControlled() then return end
 		if processed or not workspace:GetAttribute("VoteText") then
 			return
 		end

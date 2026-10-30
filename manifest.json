@@ -2,925 +2,796 @@
   {
     "path": "/ReplicatedStorage/Shared/Ballistics",
     "file": "src/ReplicatedStorage/Shared/Ballistics.luau",
-    "changed": false,
     "sha256": "433bdff3c972c7d073315e53a877b581d218cd6c7c79ebac362308f716110f10"
   },
   {
     "path": "/ReplicatedStorage/Shared/CarPhysics",
     "file": "src/ReplicatedStorage/Shared/CarPhysics.luau",
-    "changed": false,
     "sha256": "a4156d1163a01878c344d32f7a3ab8633c4e60d5425dc25e54bfd326cd74b291"
+  },
+  {
+    "path": "/ReplicatedStorage/Shared/Chips",
+    "file": "src/ReplicatedStorage/Shared/Chips.luau",
+    "sha256": "17d0bb9b2877d76023bc1cf6d9f81f0c08b776d82653e0956483dfd8ae9b7c97"
   },
   {
     "path": "/ReplicatedStorage/Shared/Config",
     "file": "src/ReplicatedStorage/Shared/Config.luau",
-    "changed": true,
-    "sha256": "cc91a0823e59149ca7e66c61ccb992a5c0297faa9f2f3d2d08db12d15d2125c1"
+    "sha256": "f24dddfe10405afa2abc9310babb76f3aac77e67e3459d8ee3abdeac9144150b"
   },
   {
     "path": "/ReplicatedStorage/Shared/ContactSolver",
     "file": "src/ReplicatedStorage/Shared/ContactSolver.luau",
-    "changed": false,
     "sha256": "205bd5a77c441fabc7075849d385d56410a22d181aeb48f8d5fb6067ad41bbe6"
   },
   {
     "path": "/ReplicatedStorage/Shared/Cyberware",
     "file": "src/ReplicatedStorage/Shared/Cyberware.luau",
-    "changed": true,
     "sha256": "5bd84f58eff1be6fd0fdcd7a7b523b65d2992de07a8b7e3ca18e18a10256e7de"
   },
   {
     "path": "/ReplicatedStorage/Shared/FlySpeed",
     "file": "src/ReplicatedStorage/Shared/FlySpeed.luau",
-    "changed": false,
     "sha256": "70d505b1c5783869d7509c17fb887614c2068c9bb997f5d2bb9f8a862221aedc"
   },
   {
     "path": "/ReplicatedStorage/Shared/Ground",
     "file": "src/ReplicatedStorage/Shared/Ground.luau",
-    "changed": false,
     "sha256": "9221b170d861cac1c3d29a648d64ccf4dd55462ff95347cf7e6ee71342ad7fc5"
   },
   {
     "path": "/ReplicatedStorage/Shared/HitMath",
     "file": "src/ReplicatedStorage/Shared/HitMath.luau",
-    "changed": false,
     "sha256": "f3096f74c5ae26e520e561516f625b12b39ab0253737baaf003722be1a7261aa"
   },
   {
     "path": "/ReplicatedStorage/Shared/HotdogPath",
     "file": "src/ReplicatedStorage/Shared/HotdogPath.luau",
-    "changed": false,
     "sha256": "a100e37b3fd40d66f8d0cf096433afc76f75c544b7a21a55cc1cb4d24a554f4b"
   },
   {
     "path": "/ReplicatedStorage/Shared/Items",
     "file": "src/ReplicatedStorage/Shared/Items.luau",
-    "changed": true,
-    "sha256": "27867bc1fa85642dbfbb26616f61763babb5e67f0510592215ef3d2c01cf9a4b"
+    "sha256": "89096147a530b6257079b31c368b58bbbeb721442d0be89f4d7b85cf1c0c0642"
   },
   {
     "path": "/ReplicatedStorage/Shared/LedgerData",
     "file": "src/ReplicatedStorage/Shared/LedgerData.luau",
-    "changed": false,
     "sha256": "4dddd6ed54b02fcfe43f4b5112d67a9d86a0c2c66c29234466e397bdaf614c03"
   },
   {
     "path": "/ReplicatedStorage/Shared/MathUtil",
     "file": "src/ReplicatedStorage/Shared/MathUtil.luau",
-    "changed": false,
     "sha256": "8dcc318d8cad1fe4a7cbf60f124ed33ce8542e91eea791118246b65ba716284f"
   },
   {
     "path": "/ReplicatedStorage/Shared/Poses",
     "file": "src/ReplicatedStorage/Shared/Poses.luau",
-    "changed": false,
     "sha256": "7bf293ee5e2a8ff163a029eb4f8bb7b20e9900163112c66d88877339efb7d2ab"
   },
   {
     "path": "/ReplicatedStorage/Shared/PropCatalog",
     "file": "src/ReplicatedStorage/Shared/PropCatalog.luau",
-    "changed": false,
-    "sha256": "5332d1c9d592cf52da32d927386da1a783739a3283f50ce409401746f322a061"
+    "sha256": "7e5b806434e4b9c3ecd77e41ce678c1b7f2f6acad62f591b2a88c0555f9d9bf2"
   },
   {
     "path": "/ReplicatedStorage/Shared/ReplayCodec",
     "file": "src/ReplicatedStorage/Shared/ReplayCodec.luau",
-    "changed": false,
     "sha256": "3b69b4ba86dd15ef70975343195ba830e1107a1d4727d7a2204e99f9700840e0"
   },
   {
     "path": "/ReplicatedStorage/Shared/RigInfo",
     "file": "src/ReplicatedStorage/Shared/RigInfo.luau",
-    "changed": false,
     "sha256": "5295e43021be116f38b0fdfeb3aff64a998cb222e67e351d95f770da3fa5179f"
   },
   {
     "path": "/ReplicatedStorage/Shared/Settings",
     "file": "src/ReplicatedStorage/Shared/Settings.luau",
-    "changed": false,
     "sha256": "c4427bff8c744084e592f245491c8777fd4d8d3e00d1bc1b9463bf743ff9d643"
   },
   {
     "path": "/ReplicatedStorage/Shared/Skins",
     "file": "src/ReplicatedStorage/Shared/Skins.luau",
-    "changed": false,
     "sha256": "855515f05cfc2619a0098f1877bf2b8bcfab9fc9944f7b6de66d44d64c46f44a"
   },
   {
     "path": "/ReplicatedStorage/Shared/SoundLibrary",
     "file": "src/ReplicatedStorage/Shared/SoundLibrary.luau",
-    "changed": false,
     "sha256": "cf10f7602771c627db2b42e38509719207383c608f2212617d718890260cd015"
   },
   {
     "path": "/ReplicatedStorage/Shared/TimeScale",
     "file": "src/ReplicatedStorage/Shared/TimeScale.luau",
-    "changed": true,
     "sha256": "06acbe21ef62a4cbbea54efadf9a78f3102b21363f9d60d6e07dae0f716dabea"
   },
   {
     "path": "/ReplicatedStorage/Shared/Titles",
     "file": "src/ReplicatedStorage/Shared/Titles.luau",
-    "changed": false,
     "sha256": "f744023c5005fdafb1ab94440e4868302de128fd9206cbc4330ef1d44ae424f5"
   },
   {
     "path": "/ReplicatedStorage/Shared/Water",
     "file": "src/ReplicatedStorage/Shared/Water.luau",
-    "changed": false,
     "sha256": "26603f2c2e33969e23740aa028a08dc2e351631be8d4e2db8efc96b5eeb36171"
   },
   {
     "path": "/ReplicatedStorage/Shared/WeaponSkins",
     "file": "src/ReplicatedStorage/Shared/WeaponSkins.luau",
-    "changed": false,
     "sha256": "8bb82a8bf34d7b65839dcea17119613281f06c9a9d48ef5d35ab9d28244a9cb2"
-  },
-  {
-    "path": "/ReplicatedStorage/Shared/Chips",
-    "file": "src/ReplicatedStorage/Shared/Chips.luau",
-    "changed": true,
-    "sha256": "b67325a4af1301e03f0e6d8ad2aef8379e206685f1fda96d5986a5c8f614c0c8"
   },
   {
     "path": "/ServerScriptService/Main",
     "file": "src/ServerScriptService/Main.luau",
-    "changed": true,
-    "sha256": "3acc6cb19cf6f15b14a3da50fd7ac30637d9ea120e754a20ccba4392bca08241"
+    "sha256": "893c0f4f483a5998aa1d53101aed4b02d98e88a0039010b3d5ae9a1048c9d045"
   },
   {
     "path": "/ServerScriptService/Modules/AdminService",
     "file": "src/ServerScriptService/Modules/AdminService.luau",
-    "changed": true,
-    "sha256": "dd1cb9f1caedc1630f7ac55aaf9eb48a3ecd6a957b93bf7bdd21a6b07821d7e7"
+    "sha256": "9b61495d39b2b49494fed2ba41c632e2ddeab612ad0549979d33caef2d80b2ee"
   },
   {
     "path": "/ServerScriptService/Modules/ArmorService",
     "file": "src/ServerScriptService/Modules/ArmorService.luau",
-    "changed": false,
     "sha256": "5772061f6fc564e37112ca3eca2eac2746d928911b86182109ac6198c7588e6f"
   },
   {
     "path": "/ServerScriptService/Modules/BodyFactory",
     "file": "src/ServerScriptService/Modules/BodyFactory.luau",
-    "changed": false,
     "sha256": "27802ead2621ac361a68ec4ab901ab784a04d92bfe5de4c9398263fe2d31806e"
   },
   {
     "path": "/ServerScriptService/Modules/BotDriverService",
     "file": "src/ServerScriptService/Modules/BotDriverService.luau",
-    "changed": false,
     "sha256": "77906158014ba3f13bcdce5d7dc40be9ba491a9e3785714925e4031d916adf31"
   },
   {
     "path": "/ServerScriptService/Modules/BountyService",
     "file": "src/ServerScriptService/Modules/BountyService.luau",
-    "changed": false,
     "sha256": "4c5ddc82335348d547c1212ac92d407cf06ef3673651019ad05e6cfa4ae05e30"
   },
   {
     "path": "/ServerScriptService/Modules/CalamityService",
     "file": "src/ServerScriptService/Modules/CalamityService.luau",
-    "changed": false,
     "sha256": "4c0024d1124249260a3fda58b33f2fac295344d496d9c6d9aaf495ee49904f5c"
+  },
+  {
+    "path": "/ServerScriptService/Modules/CameraService",
+    "file": "src/ServerScriptService/Modules/CameraService.luau",
+    "sha256": "2d053253588ba17c5ab538580e087889a4a3112d6408f36eb0e8e3b6ce40fdf1"
   },
   {
     "path": "/ServerScriptService/Modules/CharacterService",
     "file": "src/ServerScriptService/Modules/CharacterService.luau",
-    "changed": false,
     "sha256": "382c87644a88adb854d61a1c3a545b033df30aeb982a2f35c32e6415d3a93e0b"
+  },
+  {
+    "path": "/ServerScriptService/Modules/ChipService",
+    "file": "src/ServerScriptService/Modules/ChipService.luau",
+    "sha256": "dc3ece6aa01922361ef8512f521face79afcab5f73f18fc2acb32fbe5766f372"
+  },
+  {
+    "path": "/ServerScriptService/Modules/ComputerService",
+    "file": "src/ServerScriptService/Modules/ComputerService.luau",
+    "sha256": "4fa998b07451675b771b6ced03d2fdd88bf309fe03d8360bf6b51e1c613b8839"
+  },
+  {
+    "path": "/ServerScriptService/Modules/ControlService",
+    "file": "src/ServerScriptService/Modules/ControlService.luau",
+    "sha256": "90ee3403b5a1e5d57ffbccdd8ffd4067a117c36a86d3903093722e020dc883e1"
   },
   {
     "path": "/ServerScriptService/Modules/CraneService",
     "file": "src/ServerScriptService/Modules/CraneService.luau",
-    "changed": false,
     "sha256": "365a451adfa1535ae80561f4695f35a072a74939c0c150616f5dc883a714324a"
   },
   {
     "path": "/ServerScriptService/Modules/CreatureService",
     "file": "src/ServerScriptService/Modules/CreatureService.luau",
-    "changed": false,
     "sha256": "473c09ed3885a38082506cf1b3e55831643e25155d07496241aad9895aced2c6"
   },
   {
     "path": "/ServerScriptService/Modules/CyberModels",
     "file": "src/ServerScriptService/Modules/CyberModels.luau",
-    "changed": false,
     "sha256": "f18e6e32b35536e271b6ff672802f1362d814ad04d4686ca74bd04ac5bbfd17f"
   },
   {
     "path": "/ServerScriptService/Modules/CyberService",
     "file": "src/ServerScriptService/Modules/CyberService.luau",
-    "changed": true,
-    "sha256": "dbe7580033fc5c47a3b4655981fe998ed128108b7425317fdf23f103211c1303"
+    "sha256": "220d4d86c07180315a218c73abd411809fd5d62fbd1ce640b641f188458ceb09"
   },
   {
     "path": "/ServerScriptService/Modules/DamageService",
     "file": "src/ServerScriptService/Modules/DamageService.luau",
-    "changed": true,
-    "sha256": "f6d97c40af953b908490e5a7e089ca152f7cea141fee05b59ca97000e994bb1b"
+    "sha256": "7dcda6f46c654457ff37969a261d4bc6e081d4f588f06773f2768efa086488d0"
   },
   {
     "path": "/ServerScriptService/Modules/DrownService",
     "file": "src/ServerScriptService/Modules/DrownService.luau",
-    "changed": false,
     "sha256": "868f9d9ea4a0714e7eabdeaca299305baacb9762280a8d26170be5098c79ac8d"
   },
   {
     "path": "/ServerScriptService/Modules/DummyService",
     "file": "src/ServerScriptService/Modules/DummyService.luau",
-    "changed": false,
     "sha256": "e4d44da73838a1f1267693e23294d0a0d8ced951f38cb7a2dc19a7d1483006a9"
   },
   {
     "path": "/ServerScriptService/Modules/ExplosionService",
     "file": "src/ServerScriptService/Modules/ExplosionService.luau",
-    "changed": false,
     "sha256": "e645839ef7211e944601e090de9d4d76db8e81e48526026bc6bd1a202f292193"
   },
   {
     "path": "/ServerScriptService/Modules/FireService",
     "file": "src/ServerScriptService/Modules/FireService.luau",
-    "changed": false,
     "sha256": "111901c1f98cf62d145b2d144b6f02acaa725c5dbf4fa6b84f70b8ce03998037"
   },
   {
     "path": "/ServerScriptService/Modules/FractureService",
     "file": "src/ServerScriptService/Modules/FractureService.luau",
-    "changed": false,
     "sha256": "e36b94fd81e10f9106bbf847eaef26d187b2f7e03f5efd21124fb916ed580b86"
   },
   {
     "path": "/ServerScriptService/Modules/GameModeService",
     "file": "src/ServerScriptService/Modules/GameModeService.luau",
-    "changed": false,
     "sha256": "1399345813ad6bdb73882e9a7fa6563e08140ae18e993f315b97847b7f1613fd"
   },
   {
     "path": "/ServerScriptService/Modules/GearService",
     "file": "src/ServerScriptService/Modules/GearService.luau",
-    "changed": false,
     "sha256": "d7ee63639ef1b04305edb81b806d383fd367037adfffc06dd3bd7fd94de9fcdf"
+  },
+  {
+    "path": "/ServerScriptService/Modules/GiftRegistry",
+    "file": "src/ServerScriptService/Modules/GiftRegistry.luau",
+    "sha256": "0648f27cf93702e99dd0c973f95cc6224146b5dd4a36af5782d4d7e662d22479"
   },
   {
     "path": "/ServerScriptService/Modules/GoreService",
     "file": "src/ServerScriptService/Modules/GoreService.luau",
-    "changed": false,
     "sha256": "18b62d1792e0a0e4eb2455299c651656ed03263be23119c96cb9ba01a01bb476"
   },
   {
     "path": "/ServerScriptService/Modules/GunService",
     "file": "src/ServerScriptService/Modules/GunService.luau",
-    "changed": true,
-    "sha256": "4c8b80fa14131c50283dc9aa40e47f63a550af1eb8a70cc52e5bdecc922c6d65"
+    "sha256": "2ae705ea051c57c499307251eadaf1006fdf9d420def675c9002117e632b03d7"
   },
   {
     "path": "/ServerScriptService/Modules/HospitalService",
     "file": "src/ServerScriptService/Modules/HospitalService.luau",
-    "changed": true,
     "sha256": "b3b91b2e9ee9a32c339b0d9492dc62a369b5bcdb5cab0f96f3291c22943dda84"
   },
   {
     "path": "/ServerScriptService/Modules/ItemService",
     "file": "src/ServerScriptService/Modules/ItemService.luau",
-    "changed": false,
     "sha256": "57cd38c1e7e8c010ec654d7cacb96e09cf1c743dd429c25c6690bc1a6e1820bf"
+  },
+  {
+    "path": "/ServerScriptService/Modules/JobService",
+    "file": "src/ServerScriptService/Modules/JobService.luau",
+    "sha256": "1fe1c5978c3547a1217925fb110eb7ed5751d3d08e8f4a165d83af6ed4e312e7"
   },
   {
     "path": "/ServerScriptService/Modules/KillService",
     "file": "src/ServerScriptService/Modules/KillService.luau",
-    "changed": true,
     "sha256": "a8088cb5026593afbcb9e13f9d53e2564dbf6efa27c1db31529a3f2b13687944"
   },
   {
     "path": "/ServerScriptService/Modules/KnockService",
     "file": "src/ServerScriptService/Modules/KnockService.luau",
-    "changed": false,
     "sha256": "a5f6861c426f5176d4268fd9a79af085636cf6c7052ecea5c122f41655b55c44"
   },
   {
     "path": "/ServerScriptService/Modules/LedgerService",
     "file": "src/ServerScriptService/Modules/LedgerService.luau",
-    "changed": false,
     "sha256": "4462629001506299ef0ea94d91360ec0acaf13aa28832dfc28ffaf28acb8a710"
   },
   {
     "path": "/ServerScriptService/Modules/LightingService",
     "file": "src/ServerScriptService/Modules/LightingService.luau",
-    "changed": false,
     "sha256": "e59b5ad558bf6bba8e459959b9d4b74e99115e5385fd33d7c0f11dfed362880c"
   },
   {
     "path": "/ServerScriptService/Modules/MapFeatureService",
     "file": "src/ServerScriptService/Modules/MapFeatureService.luau",
-    "changed": false,
     "sha256": "2e204b6887d3e1f9849e8cd478307a5834d15e72b7aa9d959c3ebf4f050210e0"
   },
   {
     "path": "/ServerScriptService/Modules/MapService",
     "file": "src/ServerScriptService/Modules/MapService.luau",
-    "changed": false,
     "sha256": "a8fd7e29d8931b7199ef53158feba28af604d56f4de49058c4e87718b847cac5"
   },
   {
     "path": "/ServerScriptService/Modules/NPCService",
     "file": "src/ServerScriptService/Modules/NPCService.luau",
-    "changed": true,
     "sha256": "e846231a41851c9982a70abc0a41281bce4b41f94a1363cbb738e812b2818bfd"
   },
   {
     "path": "/ServerScriptService/Modules/OwnershipService",
     "file": "src/ServerScriptService/Modules/OwnershipService.luau",
-    "changed": false,
-    "sha256": "c92603b816d8ec1340d7edf0166b5fb2a433811ada73e535262a335b96e308c1"
+    "sha256": "6f697ea737e4916aea1a86fac6565434cc7af4f5f4a0ec37d91135e8c7f4de95"
   },
   {
     "path": "/ServerScriptService/Modules/Persist",
     "file": "src/ServerScriptService/Modules/Persist.luau",
-    "changed": true,
-    "sha256": "bd8ba4941a14409436775b9669008b84a7ccffe7426c9da7ffed75b3e42ae400"
+    "sha256": "a3b3fceb471369db745752735e8a3286bc4c657d8af3b6e2c33dd1eefbaab9d0"
+  },
+  {
+    "path": "/ServerScriptService/Modules/ProgressEpoch",
+    "file": "src/ServerScriptService/Modules/ProgressEpoch.luau",
+    "sha256": "9758bcc925b7ec9d4be630ad21747969216ac915590ccb0317dd47cd611f8425"
   },
   {
     "path": "/ServerScriptService/Modules/PropBuilders",
     "file": "src/ServerScriptService/Modules/PropBuilders.luau",
-    "changed": true,
-    "sha256": "27c42649e8b613a0680b1f072b84931d384d3f5498d338e4bcc6c4ff98eca8b4"
+    "sha256": "c4d2c5c8e8ad9d97a3b2e195eff0fc183db5b93587ce89046700f072c3c67ec8"
   },
   {
     "path": "/ServerScriptService/Modules/PropService",
     "file": "src/ServerScriptService/Modules/PropService.luau",
-    "changed": false,
-    "sha256": "3f51f61960c2bf0c8c78b833dde9633cc134c5d9a7e4b1c328160138079b1287"
+    "sha256": "c8d5cd2bf7829ec15cc11b15052dd8092310d3eab0dbbd37f072cb7ef73087ff"
+  },
+  {
+    "path": "/ServerScriptService/Modules/PsychosisService",
+    "file": "src/ServerScriptService/Modules/PsychosisService.luau",
+    "sha256": "21325144d82ee106196e15c28d61b93e19b35f6c71d26ec7199713094e2876f6"
   },
   {
     "path": "/ServerScriptService/Modules/QuestService",
     "file": "src/ServerScriptService/Modules/QuestService.luau",
-    "changed": true,
     "sha256": "502a108bed37c730c5b6ffcd55e7cec234251bdf10a81ce82aea92b078ffaeba"
   },
   {
     "path": "/ServerScriptService/Modules/RegrowthService",
     "file": "src/ServerScriptService/Modules/RegrowthService.luau",
-    "changed": true,
     "sha256": "f07bbe615135ea959da575ab7f372e81aaadc44c95eccd59851179774fc55416"
   },
   {
     "path": "/ServerScriptService/Modules/ReplayService",
     "file": "src/ServerScriptService/Modules/ReplayService.luau",
-    "changed": true,
     "sha256": "96f0c4a70f21437f73cdac7a9c423675712a25450852bd656a0901ccefa09d0f"
   },
   {
     "path": "/ServerScriptService/Modules/RewardService",
     "file": "src/ServerScriptService/Modules/RewardService.luau",
-    "changed": true,
     "sha256": "4bcf939af7c8de527497458861677a8a4f81fbec46b390b4b0a4370b98d23f2a"
   },
   {
     "path": "/ServerScriptService/Modules/RigBuilder",
     "file": "src/ServerScriptService/Modules/RigBuilder.luau",
-    "changed": false,
     "sha256": "80ea3169d02b7b5471c3355f4a7286a88d1d10db2a70d17b7e4625771ca1cdd4"
   },
   {
     "path": "/ServerScriptService/Modules/RipperdocService",
     "file": "src/ServerScriptService/Modules/RipperdocService.luau",
-    "changed": false,
     "sha256": "cc881befd41df26baf737a403bf1e5ee25fa1cc01af4eeb34e255974b2778487"
   },
   {
     "path": "/ServerScriptService/Modules/RivalService",
     "file": "src/ServerScriptService/Modules/RivalService.luau",
-    "changed": false,
     "sha256": "c3644d91a74f093cd09656699628ab36e04b09d917aa33d6fdfa5908b3d5400e"
   },
   {
     "path": "/ServerScriptService/Modules/SandevistanService",
     "file": "src/ServerScriptService/Modules/SandevistanService.luau",
-    "changed": true,
     "sha256": "440c18df3f6831f7f2cb2a2835858c9e8d1442d5eaccf5c193bcdc055f9120c4"
   },
   {
     "path": "/ServerScriptService/Modules/SaveGate",
     "file": "src/ServerScriptService/Modules/SaveGate.luau",
-    "changed": false,
     "sha256": "66b823cdc91ceae0609adf183ee04a3c9bf34d8433a4f6a02d38a9f4ccc1dfc9"
   },
   {
     "path": "/ServerScriptService/Modules/ServerImpactSensor",
     "file": "src/ServerScriptService/Modules/ServerImpactSensor.luau",
-    "changed": false,
     "sha256": "7babbb513e26d9bef21f731cba8bd91c75884d9644c04e40fb22d78efb3ffd8c"
   },
   {
     "path": "/ServerScriptService/Modules/SettingsService",
     "file": "src/ServerScriptService/Modules/SettingsService.luau",
-    "changed": false,
     "sha256": "e18779127521315ac30009aa536abbdbbd54ba0a67600afde11c40228459f963"
   },
   {
     "path": "/ServerScriptService/Modules/SeverService",
     "file": "src/ServerScriptService/Modules/SeverService.luau",
-    "changed": false,
     "sha256": "72cb95f8c03baead6af67636286df872b35025d757773f2f1604a169fd8fb6c9"
   },
   {
     "path": "/ServerScriptService/Modules/SkinService",
     "file": "src/ServerScriptService/Modules/SkinService.luau",
-    "changed": true,
     "sha256": "c1fee7a8468417bb1acec06b2e5c788c0597b7a2c7716a3a8d17421eccb93947"
   },
   {
     "path": "/ServerScriptService/Modules/SpineModel",
     "file": "src/ServerScriptService/Modules/SpineModel.luau",
-    "changed": false,
     "sha256": "eba6a9f24c64a1130c4a8df03220281886a4045ff9664300df58459b1c032c46"
   },
   {
     "path": "/ServerScriptService/Modules/SteelBallService",
     "file": "src/ServerScriptService/Modules/SteelBallService.luau",
-    "changed": false,
     "sha256": "b48943bcfd6faf242987d966a51aae8eb3850b243a259a84601e1f01070f3f79"
   },
   {
     "path": "/ServerScriptService/Modules/StillCutService",
     "file": "src/ServerScriptService/Modules/StillCutService.luau",
-    "changed": true,
     "sha256": "1d0e533ec2fba5ac18828e3cb238ce51310d826fa4356593155087cf47cd9127"
   },
   {
     "path": "/ServerScriptService/Modules/SuperService",
     "file": "src/ServerScriptService/Modules/SuperService.luau",
-    "changed": true,
     "sha256": "eb956927d42b2a01687e879cb85532e478dc811f67793577a4d59432c3ca5d36"
   },
   {
     "path": "/ServerScriptService/Modules/SwordQuestService",
     "file": "src/ServerScriptService/Modules/SwordQuestService.luau",
-    "changed": true,
-    "sha256": "73051ff3c743e6ac539399bf7bf0ab4930407b8c669fc753cbfc956043ce2fa1"
+    "sha256": "33bb62e9647c68509339fc1f006adcb80162d3dbdb7465426eac62a25323408d"
   },
   {
     "path": "/ServerScriptService/Modules/VanService",
     "file": "src/ServerScriptService/Modules/VanService.luau",
-    "changed": false,
     "sha256": "e8d960caa5ca5050595ff4330bfe5a92a44b801cb31760b2a5231da5b5574113"
   },
   {
     "path": "/ServerScriptService/Modules/VehicleService",
     "file": "src/ServerScriptService/Modules/VehicleService.luau",
-    "changed": false,
     "sha256": "f807b3fa88f8b5bacbcd7d03b5eac1fadbd758d3dca20ce3773a1c2d2a67990a"
   },
   {
     "path": "/ServerScriptService/Modules/VirusService",
     "file": "src/ServerScriptService/Modules/VirusService.luau",
-    "changed": true,
     "sha256": "1a1d3b455e64bdb384a1d4e5f481d000ab9d657da38c5ef29a5df1bd71083c35"
   },
   {
     "path": "/ServerScriptService/Modules/VoteService",
     "file": "src/ServerScriptService/Modules/VoteService.luau",
-    "changed": false,
     "sha256": "da5dd246724b29071d8f53444d5fe6c43744bc665233299576d0adf8dee3b106"
   },
   {
     "path": "/ServerScriptService/Modules/WeatherService",
     "file": "src/ServerScriptService/Modules/WeatherService.luau",
-    "changed": false,
     "sha256": "0d7dcc262ac2c4f1a905a52df6234963e892dc55e9bdc084106ebfc098e50756"
   },
   {
     "path": "/ServerScriptService/Modules/WorldSetup",
     "file": "src/ServerScriptService/Modules/WorldSetup.luau",
-    "changed": false,
     "sha256": "15ccaf5fa36578bc5361f85a27f964b3e33fc78120d2eabe9ade5b9bde28ab81"
-  },
-  {
-    "path": "/ServerScriptService/Modules/ChipService",
-    "file": "src/ServerScriptService/Modules/ChipService.luau",
-    "changed": true,
-    "sha256": "988d17f99f1dc76292a1db2dbb06b897becd29e8a7c3020866700ea299166841"
-  },
-  {
-    "path": "/ServerScriptService/Modules/CameraService",
-    "file": "src/ServerScriptService/Modules/CameraService.luau",
-    "changed": false,
-    "sha256": "dde1bddcda64525967025a8d19650e151569055a0ee6d7e6b7126c4ac82280a6"
-  },
-  {
-    "path": "/ServerScriptService/Modules/ComputerService",
-    "file": "src/ServerScriptService/Modules/ComputerService.luau",
-    "changed": true,
-    "sha256": "bf9b00f16076ab79c377933023b17a5e3bd88f279eda19037a9b8fa1fb2252a1"
-  },
-  {
-    "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient",
-    "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient.luau",
-    "changed": true,
-    "sha256": "8e084e83f37ee7a0f5c73bbed3f31e4324ae8680c795d588bb873c279230a238"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/BloodFX",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/BloodFX.luau",
-    "changed": false,
     "sha256": "65ecdaf5a6192063033030934f9b29ad4966031e6be7c7c784067334535b56e4"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/BoomboxClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/BoomboxClient.luau",
-    "changed": false,
     "sha256": "df998906e6e888d0b0ad464c46c14958820b9e8a808b8ad0e226d859d5fb2623"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/BountyClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/BountyClient.luau",
-    "changed": false,
     "sha256": "aa4af5fd088759b9004385e8df4abd1b015697b839aa906a4daa0b6d4fe5b2d9"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/CameraController",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/CameraController.luau",
-    "changed": true,
-    "sha256": "85981f8275b7057114b2d6650db93ebe5a010fa99837e8a2b3c0548b34cdccdd"
+    "sha256": "06cde07fe3846290e1ed7260f311deeb08ffdcc898668c05b51042aefe2447c0"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/CharacterController",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/CharacterController.luau",
-    "changed": true,
     "sha256": "2d032f1a811730346d001d462bc8902fac42210c7face26e33b3e29fe05bba2a"
+  },
+  {
+    "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ChipClient",
+    "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ChipClient.luau",
+    "sha256": "c9dcbe34e49a44182d2e40502f94b4609248f446ab266c41d1c7097556df57ff"
+  },
+  {
+    "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ControlClient",
+    "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ControlClient.luau",
+    "sha256": "e964de6371946211dfbb51ac5bba0528969cb9a5482d643f8395d7b5b469f9dc"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/CreatureFX",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/CreatureFX.luau",
-    "changed": false,
     "sha256": "21dd7c8cab9279bb48702819b7633aa41ce42749441b2dbced3ac5e798295e6f"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/CyberClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/CyberClient.luau",
-    "changed": true,
-    "sha256": "26be929600d9b1792b9ab7e9e7db664e19ba46a26627c1b14490a467b8db3dd1"
+    "sha256": "4de7c8809e9b5e2f03eeab6f78e8634fb01a774c7ce26e6dd1c0afbb050307f4"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/DragClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/DragClient.luau",
-    "changed": false,
     "sha256": "c9157b3010c46f7668848fbadc21897f116e7fb5fa4b6aaf13235f3ed4337f12"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/DragPuppets",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/DragPuppets.luau",
-    "changed": false,
     "sha256": "47e1450cf20fa80a297dd757cedf20247ee186beafe16dc2d257a84c7a11db3c"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Dream",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Dream.luau",
-    "changed": false,
     "sha256": "c01b82379d555cd476559ab4bce6bdbcf8800fc6d32bb3bcfbbe4317da019d7b"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/EchoRadar",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/EchoRadar.luau",
-    "changed": false,
     "sha256": "45d7ffbef8c3ddbbf462404ecee4d6c79ce523e97029c34bb790c64d3a54497c"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Events",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Events.luau",
-    "changed": false,
     "sha256": "ba8c1d822c8c8690555600029c7c76d615aed36a9eb0b71af130597205585cde"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ExperimentalLighting",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ExperimentalLighting.luau",
-    "changed": false,
     "sha256": "197eaad6829f24803ad9815a5ecca086e43e85ad62da86888738a50807a82f83"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ExplosionFX",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ExplosionFX.luau",
-    "changed": false,
     "sha256": "95b2bafe5da21854bbc2d6126051286a23f4c5d36eb06cdad79daddafd760f7e"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/FireFX",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/FireFX.luau",
-    "changed": false,
     "sha256": "e21198f1af4257102017db7f74effcd89f0e4ffaa07c46260d3ab143698f10d3"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Fly",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Fly.luau",
-    "changed": false,
     "sha256": "ab09b613f1a331870c02aef8647411f1147f0a3ce65d7c13de4999b6d1e30cdd"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/FreeCam",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/FreeCam.luau",
-    "changed": true,
-    "sha256": "1c816bd36c82fbc7e78aa2d35cf1521c4c4195324bb5f713ebeb42b42a5a3c78"
+    "sha256": "5b82055730962b23b462fa8f84a0781ebdd3f2b967c432c464e7dd10943368be"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Gear",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Gear.luau",
-    "changed": false,
     "sha256": "0b1135c7fbd5adb6d2aaef5ec31b6d0d708437631ebca57fbb6d4803328d27c6"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/GearHUD",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/GearHUD.luau",
-    "changed": false,
     "sha256": "54bf7a17999ea7badaddc70a2a70743260fc83f0fa0742469d413a2923ff0d2c"
+  },
+  {
+    "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/GiftRegistryClient",
+    "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/GiftRegistryClient.luau",
+    "sha256": "091c0684fe83cb03eebfaf5d31d33446b96b9be549d08a706a965b1ecb24ea5c"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/GrabOutline",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/GrabOutline.luau",
-    "changed": false,
     "sha256": "f1c59955e684a1fead7652b7c5b9f57d02b8be0a98c806a568911f21fea4514b"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/HUD",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/HUD.luau",
-    "changed": false,
     "sha256": "8db9c02e49307be7d52c5a359cfe995d063513801f7e69d74cb6dfc71c0b07b5"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Hallucinations",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Hallucinations.luau",
-    "changed": false,
     "sha256": "31981c5361c623fb4c5e1c08a718a7b816bebfb9c29b1405a17fb88e50c4dc49"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Hands",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Hands.luau",
-    "changed": false,
-    "sha256": "b11072559dcae01a58a86f79129a72991e44a60203c710e096350bf0ba3f706f"
+    "sha256": "9d6194ae1c7ac4408ec816c024d4dbea8743203e7f6d4306b8be033c5f9794b4"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Input",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Input.luau",
-    "changed": true,
-    "sha256": "a2c0f00796a289e86ea4c720eb269b14be6eec2e3962300b3aa5c34d95b0908f"
+    "sha256": "678c5926f0eb2ea2a30860163ecb8288147866811eb5caa97f31fc7e9f0fab9c"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/JetClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/JetClient.luau",
-    "changed": false,
     "sha256": "3cdda14232ef3ba073933be70cbbf007206accb6b58f3e9e853f94bc99d3a563"
+  },
+  {
+    "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/JobsClient",
+    "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/JobsClient.luau",
+    "sha256": "6ce6b46bc93bcee29884b7a2b1068f35e16d7315964504d1af59514cb3a78081"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Kick",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Kick.luau",
-    "changed": false,
     "sha256": "e2ea7a7a8ed2d0109978d8c14ce79551c200cba6d1c7ca5ae502f7fd0b3864b9"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/KuroRig",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/KuroRig.luau",
-    "changed": false,
     "sha256": "3d3b65a767f4ad96bfd3a8b525886d507cd49142198a2de5dc068384900d3bf3"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/LaserFX",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/LaserFX.luau",
-    "changed": false,
     "sha256": "a153dcae6b442aef12ff2ac741c9bf65b71f66280405032ac8f1544365a27545"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/LeaderboardClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/LeaderboardClient.luau",
-    "changed": false,
     "sha256": "4fc39da3557300aa5f290ea487f6aa74743ba2efe0d938bc25a2d49cde2d2051"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/LedgerClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/LedgerClient.luau",
-    "changed": false,
-    "sha256": "33a25af57854ddd79bc0caedbdad9683527ca0a5db4cf67f28421148b1a9450d"
+    "sha256": "90b25b693ab3c71787cf3daf3ada6a02fd0004b4f3fd0ef715a55679a5f9d5da"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/MapMood",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/MapMood.luau",
-    "changed": false,
     "sha256": "679f33496a22218bc61086298aefbac45b31c7679f3170164869793c441c3505"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/MobileControls",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/MobileControls.luau",
-    "changed": false,
-    "sha256": "ef48b35ff6d59227fe9bb902cc4c1caed6587b48736a15e241d6a7638b7a12aa"
+    "sha256": "bdb1397958b4b71578f50b09656531fb8d07bf81708c7f3164f115d2fdfe9fbf"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ModeClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ModeClient.luau",
-    "changed": false,
     "sha256": "3bfc33c24315e3a5e099ecde9608aaa60fba77ed3c661c7a1e6c17cd5282e51c"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/PianoClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/PianoClient.luau",
-    "changed": false,
     "sha256": "5da2ed7101f5c3996be101b7e6f87be8fc1656689c496b3c6589c0a2a185f6b9"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Pockets",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Pockets.luau",
-    "changed": false,
     "sha256": "e377f1dc679fff3174fd419a0d0cd91fe30cf6ce7118e8fadb6303cdc5a3216b"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Powers",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Powers.luau",
-    "changed": false,
     "sha256": "1b8c8ad985151ebd218df11897618fb4ab8d0241106044692aa61e42a898c2b4"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/PromptUI",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/PromptUI.luau",
-    "changed": false,
     "sha256": "79d9a2da7cffaf548c592a5a6830defc6568b0557db4811158518052b21e6837"
+  },
+  {
+    "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/PsychosisClient",
+    "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/PsychosisClient.luau",
+    "sha256": "19c39001f2ee71dd2ba9436b44845f15ddc64b298c1e8548da6d113829f5e2fe"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/QuestClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/QuestClient.luau",
-    "changed": false,
-    "sha256": "0a5d0f499a6ce9f82e474ac97504d4b45362b03ed9393e20e0c28b6fc3283139"
+    "sha256": "e9736dab43068530058b3da03087a1d2c858ccd8b55226500f8ad1f8170f03a1"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ReplayClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ReplayClient.luau",
-    "changed": true,
-    "sha256": "94127594a290813a5d4a3f085f384f2a795f611f8dde475dc17c85d0e6132bc0"
+    "sha256": "951b64c326cc92f2121e19dbda14999fa7a55775d3ad36ca401761a0f316ef1a"
+  },
+  {
+    "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ReplayGround",
+    "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ReplayGround.luau",
+    "sha256": "a6abb73e7e8da756962e6eee2acf022d0d62ecfa2c9d783c101d86c2f0690eb7"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SandevistanClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SandevistanClient.luau",
-    "changed": true,
-    "sha256": "a67b0f672fa7ca6b361085c01d34e499b7ed0ea6885ffc3581ec481c51abcf09"
+    "sha256": "1dd5fd8cb70db0fff02acb05d0af132484e8aad441add0eea48dd4cbee06abbb"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Sensor",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Sensor.luau",
-    "changed": false,
     "sha256": "ef9e78f4af734260204d72c52716914fec16a0fe8431e4f4ea98b5f826285ded"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SettingsMenu",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SettingsMenu.luau",
-    "changed": true,
-    "sha256": "c8e43748e52adf160a8b60631370ffd952965cc5464ca799d5c2e284f9815867"
+    "sha256": "bfdbd3b42fa1532959e95e30067be63363c86f0b00555b60f7dba85fcfadb581"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ShopClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ShopClient.luau",
-    "changed": false,
     "sha256": "98095e390672ef0c6b42272a719f003b92d848c3d7f81e249502d0960436d09c"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SkinIcon",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SkinIcon.luau",
-    "changed": false,
     "sha256": "e97cbc18928a3b015e57e108325667abe2507af573dd937a3b8f30d5ea167f06"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Slide",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Slide.luau",
-    "changed": false,
     "sha256": "eda4a0938b6d60ab99728edc868ae86fea9f7be5fda82a260ef4110908e4c639"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SpectateClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SpectateClient.luau",
-    "changed": false,
-    "sha256": "020b2f522907b89f80622cfb57af3c0dfd0f7d9f397051d5859b3f7a68102083"
+    "sha256": "48c9ee82442679d49e671c4cdca5cd259bd88ee01ae62a7ed4b1f1a28fb7760c"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SpinFX",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SpinFX.luau",
-    "changed": false,
     "sha256": "61df7a5e43de47e0e2c0df4ac5a6f23ea647999c6aa2f73c4893d8cbccc3c319"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SteelBallFX",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SteelBallFX.luau",
-    "changed": false,
     "sha256": "5c924d4860a50684d8c8490f4bdc153405a1b87616cfc49e4939bcda45a35252"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SuperFX",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SuperFX.luau",
-    "changed": true,
     "sha256": "8c47f5f4f9daa586549bc6d3a58414873ee85d2ca940d56be0da5d13bb14cc45"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Swim",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Swim.luau",
-    "changed": false,
     "sha256": "a10428a7ab94005fe735cfec9b3dee743cc071ef7aca7f6e4216779d617c4037"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SwordClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SwordClient.luau",
-    "changed": true,
-    "sha256": "ffe9e5248a9da7ea591aa49b66b2b0d28d0ae640759f6843d9d8f4f94718ce01"
+    "sha256": "867f02852088d464248c570a855cba57d0d6695f1cb1b1b3231784c3467da00d"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/TVClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/TVClient.luau",
-    "changed": false,
     "sha256": "328ab0aee5e2f88a50763b107db674d9a58dfc4354cd5dd0f3fcd48793ce3670"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/TitleClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/TitleClient.luau",
-    "changed": false,
     "sha256": "5c218356fb4cd7856b4fb277acf51c55f528533cf74ad557867c8e0564dbfdf4"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ToolFX",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ToolFX.luau",
-    "changed": false,
     "sha256": "062059bc828b47ca041c158178885c7891d5b254ff0cc65a1d303e4944cf3b3d"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/TutorialClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/TutorialClient.luau",
-    "changed": false,
     "sha256": "31caf899aea83a180b4d8c3a9d712b204a5fa3291fc1abd7d9b53b3e482ed1ee"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/TwoHand",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/TwoHand.luau",
-    "changed": false,
     "sha256": "988705e4b94f0506cf4d8761ab50faaee94f7f790a181a2e995c3c1f202d7d8b"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/UI",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/UI.luau",
-    "changed": true,
-    "sha256": "02c8741d74dd0b40db5a793ccb79ee1d21829db53d35b69b3de45568ef2e304e"
+    "sha256": "6c898aed9e2bd48ef4683347f4085f68f3b8b6617370f126270d7776763ffb59"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/VehicleClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/VehicleClient.luau",
-    "changed": false,
     "sha256": "003362b80fd292f39930e89a9848240f9f4058b53b1e39d4aae98d066e33cd77"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/VoteClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/VoteClient.luau",
-    "changed": false,
-    "sha256": "078330c755557aaad61b440b1c6e32d0f605d9eb248b6c6da12995235777579e"
+    "sha256": "9d8a0bc16f6a9cbf9ecb990925edc85635e3cb0f0a7a9b5bce6143d1ea412fab"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/WeatherClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/WeatherClient.luau",
-    "changed": false,
     "sha256": "2eb97ae7fbee09becc2c06e48543a6a323ae4e4ce76365fe688ea3db61fa2846"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/WoundHoles",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/WoundHoles.luau",
-    "changed": false,
     "sha256": "6b0a72b5f99ca459cabed4764744d280fd834d103711b3ee2075726ef8b10917"
   },
   {
-    "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ChipClient",
-    "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ChipClient.luau",
-    "changed": true,
-    "sha256": "a0ec26dee354ded7e2799ac95d502140d262104db4c18f1d854a091ff1726040"
-  },
-  {
-    "path": "/ServerScriptService/Modules/JobService",
-    "file": "src/ServerScriptService/Modules/JobService.luau",
-    "changed": true,
-    "sha256": "1f90ef56ddf07307df26f6916bfd5023bd004b97ea4a111e3ec2f9df4d67fe0f"
-  },
-  {
-    "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/JobsClient",
-    "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/JobsClient.luau",
-    "changed": true,
-    "sha256": "48f73c40579233b1495277cd2801f8ad0a05dee6a5dd5a0de6fccd4f95a12328"
-  },
-  {
-    "path": "/ServerScriptService/Modules/ProgressEpoch",
-    "file": "src/ServerScriptService/Modules/ProgressEpoch.luau",
-    "changed": true,
-    "sha256": "96b8920611427fca9459d2d9471288e54b4663063d2ae60c61ff961ab67a3ce2"
-  },
-  {
-    "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/PsychosisClient",
-    "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/PsychosisClient.luau",
-    "changed": true,
-    "sha256": "19c39001f2ee71dd2ba9436b44845f15ddc64b298c1e8548da6d113829f5e2fe"
-  },
-  {
-    "path": "/ServerScriptService/Modules/PsychosisService",
-    "file": "src/ServerScriptService/Modules/PsychosisService.luau",
-    "changed": true,
-    "sha256": "21325144d82ee106196e15c28d61b93e19b35f6c71d26ec7199713094e2876f6"
+    "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient",
+    "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient.luau",
+    "sha256": "42b02922d825622cfe3160aebbb9f7160633b08db63d8827f02947ca4d5ddb46"
   }
 ]

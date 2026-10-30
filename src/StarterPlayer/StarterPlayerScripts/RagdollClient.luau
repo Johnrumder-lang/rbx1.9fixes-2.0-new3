@@ -48,6 +48,17 @@ local ToolFX = require(Modules:WaitForChild("ToolFX"))
 local ResetRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Reset") :: RemoteEvent
 
 local current = nil
+ReplicatedStorage.Remotes.Grip.OnClientEvent:Connect(function(action, item, side)
+	if not current or not current.ready or not current.hands or (side ~= "Left" and side ~= "Right") then return end
+	local hand = current.hands[side]
+	if action == "release" then
+		if hand.grip and hand.grip.item == item then current:_release(side, false, true) end
+	elseif action == "equip" and typeof(item) == "Instance" and item:IsA("Model") and item.Parent and item:GetAttribute("HolderId") == player.UserId then
+		if hand.grip and hand.grip.item ~= item then current:_release(side, false, true) end
+		current:_gripItem(side, item, true)
+	end
+end)
+
 
 Input.Init()
 CameraController.Init()
@@ -301,3 +312,5 @@ end
 task.spawn(function() require(script.Client:WaitForChild("JobsClient")).Init() end)
 
 task.spawn(function() require(script.Client:WaitForChild("PsychosisClient")).Init() end)
+
+task.spawn(function() require(script.Client.ControlClient).Init() end)

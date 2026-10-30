@@ -1,59 +1,67 @@
-# Ragdoll Sandbox v3.0
+# Ragdoll Sandbox v3.1
 
-Die Datei `RagdollSandbox_v3_0.rbxlx` in Roblox Studio öffnen. Sie enthält die ursprüngliche Spielwelt, 40 geänderte Skripte und fünf neue Module. Die Originaldatei bleibt unverändert. Es wurde nichts bei Roblox veröffentlicht und kein vorhandener Spielstand zurückgesetzt.
+Die vollständige Spiel-Datei ist `RagdollSandbox_v3_1.rbxlx`. In Roblox Studio über **File → Open from File** öffnen. Die Skriptquellen und die Datei sind synchronisiert; es wurde keine Roblox-Experience veröffentlicht und kein echter Spielstand zurückgesetzt.
 
-## Steuerung
+## Fehlerbehebungen
 
-| Aktion | Bedienung |
-| --- | --- |
-| Quickhack-Modus | **O** ein-/ausschalten, Spieler anvisieren |
-| Quickhack auswählen | **Mausrad**; im Modus bleibt der Kameraabstand gleich |
-| Ausgewählten Quickhack ausführen | **F** bei gültigem Ziel |
-| Chip-Inventar | **K** |
-| Bisheriger Admin-Zeitstopp | **I**; O gehört jetzt dem Quickhack-Modus |
-| Freecam verschenken oder entziehen | **M → GIFTS → Spieler → FREECAM** |
-| Geschenkte Freecam verwenden | **U**, WASD, E/Q, Shift/Ctrl, Mausrad, rechte Maustaste; H blendet HUD aus |
-| Aufträge | **JOBS** oben rechts |
-| Stillwater beschwören/weglegen | **SUMMON / DISMISS** nach abgeschlossener Stillwater-Quest |
-| Eigene Admin-Psychose erleben | **M → ADMIN → MY PSYCHOSIS IMMUNITY: OFF** |
-| Alle Fortschritte zurücksetzen | Als Spielbesitzer **M → ADMIN → WIPE ALL PROGRESS**, danach Bestätigungsklick |
+- **Studio-Start:** `ProgressEpoch` fängt auch Fehler beim Anfordern des DataStores ab. Ein unveröffentlichter Place startet mit Sitzungsspeicher. In veröffentlichten Servern werden echte Spielstände weiterhin geladen; bei unbekannter Speicher-Generation wird kein vorhandener Spielstand überschrieben.
+- **Ripperdoc:** Der neue PC steht auf der vorhandenen Theke am Front-Desk und zeigt zur Bedienposition. Die zusätzlichen Tische mitten im Raum entfallen.
+- **Quickhacks:** Neuer reservierter Keybind **F4**. Der Client wartet auf das echte Server-Remote, statt bei einem Startfehler ein funktionsloses lokales Remote anzulegen. Spieler anvisieren, mit dem Mausrad auswählen, mit F ausführen. Der Kameraabstand bleibt dabei fest.
+- **Psychose:** Ausschalten der Admin-Immunität setzt die Belastung nicht mehr künstlich auf 65 %. Ohne Implantatlast wird Cyberware-Psychosestress auf null gesetzt – für Admins und normale Spieler. Die serverweite Psychose-Einstellung bleibt wirksam; ein gezielter Quickhack oder Virus ist weiterhin ein eigener Angriff.
+- **Aufnahmen:** Große Boden-/Baseplate-Teile außerhalb des Map-Modells werden vor dem übrigen Umgebungsbudget in die Wiedergabe kopiert. Das gilt auch für Krankenhaus-Replays.
+- **Schrift:** Wieder die ursprüngliche Schrift **Sarpanch**. Die schwarzen/grauen Menüs und UI-Sounds bleiben erhalten.
+- **Dodge:** Alle Chipstufen versetzen den Charakter seitlich. Wand- und Bodenprüfung verhindern Versetzungen durch Wände oder in freie Luft; ohne freie Ausweichrichtung kann der Treffer landen. Eine kurze Ausweichphase deckt die übrigen Pellets derselben Salve ab.
+- **Blut und Löcher:** Schadensabwehr wird vor Fleisch-Feedback ausgewertet. Abgefangene Treffer erzeugen keine Durchschusstunnel oder Austrittsblut. Erst Schaden, der tatsächlich durch den Aegis-Schild dringt, erzeugt Körperverletzungen.
+- **Serverseitige Aufnahme:** Chip-TAKE, Paketaufnahme und erzwungene Waffenaufnahme synchronisieren jetzt auch den lokalen Handzustand. Serverseitiges Fallenlassen löst den lokalen Griff.
 
-Freecam-Geschenke werden im bestehenden Geschenk-Speicher gesichert. Entziehen beendet eine laufende Freecam sofort. Das Geschenk verleiht keine weiteren Adminrechte; der T-Teleport bleibt für Admins reserviert.
+## Chips, Viren und Fremdsteuerung
 
-Der Schalter für die eigene Psychose wirkt zusätzlich zur serverweiten Cyberpsychose-Einstellung. Ist Cyberpsychose serverweit ausgeschaltet, bleibt sie ausgeschaltet.
+**F mit einem gehaltenen Chip** bringt ihn ins Inventar und öffnet das Deck. Dort kann er geslottet, ausgeworfen und mit **TAKE** wieder in die Hand genommen werden. Videos lassen sich über **PLAY** abspielen. Wer eine andere Person mit der freien Hand festhält, setzt ihr den Chip mit F ein.
 
-## Änderungen
+Beim Einsetzen von **KILL A TARGET** erscheint beim Einsetzenden eine Spielerliste. Der Chip wird erst nach gültiger Zielwahl eingesetzt. Nach **15 Sekunden** beginnt die Wirkung. Das Ziel kann eine andere lebende Person sein; der Träger selbst ist ausgeschlossen. Firewall und bestehende Angriffsschutzregeln werden beim Aktivieren geprüft.
 
-- Kamera-, Chip- und Computermodelle überarbeitet: zusätzliche Gehäusedetails, Bedienelemente und korrekte Linsenausrichtung. Chips auf 48 % verkleinert. Die fest platzierten Ripperdoc-Terminals stehen auf Arbeitsflächen mit Bodenstützen.
-- Eigene Spielmenüs in Schwarz und Grautönen mit heller Schrift; neue Schrift, Klick- und Hover-Sounds. Computeraktionen geben Tonfeedback. Verkauf gewöhnlicher Chips zum Computer ergänzt; kostenlose Adminchips sind vom Weiterverkauf ausgeschlossen.
-- Quickhacks funktionieren gegen Admins. Reichweite, Sichtkontakt, Abklingzeiten und vorhandene Firewalls werden weiterhin geprüft. Blackwall trifft ebenfalls Admins und hat neue Ringe, Datenfragmente, Bögen, Strahl und Schockwelle.
-- Sandevistan verlangsamt Charaktere im Umkreis von 70 Studs. Der Abklingzustand bleibt beim Tod und Respawn im laufenden Server erhalten. Weltzeit und globale Schwerkraft bleiben bei diesem lokalen Effekt normal.
-- Stillwater friert Charaktere im Umkreis von 42 Studs ein. Überlappende lokale Zeitstopps behalten eine gemeinsame Freigabezeit. Stillwater erscheint nicht automatisch am Avatar; Beschwören setzt die abgeschlossene Quest voraus.
-- Krankenhaus-Replays: Bildschirmdarstellung über PlayerGui/Adornee korrigiert, gemeinsame Serverzeit und zeitlich passende Wiedergabe für später hinzukommende Zuschauer ergänzt.
-- Drei bezahlte Aufträge: markierten NPC ausschalten ($450), Datenkurier vom Ripperdoc zum Krankenhaus ($250), drei feindliche NPCs ausschalten ($300). Ein aktiver Auftrag pro Spieler, Zeitlimit und Abklingzeit; Auszahlungen erfolgen auf dem Server.
-- Cyberpsychose: private Erscheinungen getöteter Gegner, Unschärfe und zusätzliche Bildstörungen, gefährlichere Ausraster und Cyberware-Ausfälle. Treffer mit unterstützten Schusswaffen auf eine eigene Erscheinung lösen tödliche Rückkopplung beim Schützen aus. Andere Spieler sehen diese Erscheinungen nicht.
-- Kapazitätschips gewähren je nach Stufe **+1 / +2 / +3** Kapazität.
-- Regrowth Core regeneriert zusätzlich 2/4/7 HP pro Sekunde, schließt ab Stufe 2 Blutungen und lässt Gliedmaßen schneller nachwachsen. EMP unterbricht die Regeneration; Blackwall und tödliche Psychose-Rückkopplung umgehen Wiederbelebung.
-- Globaler Fortschrittsreset umfasst auch Offline-Spieler. Eine neue Speicher-Generation verhindert, dass verspätete Speichervorgänge den alten Fortschritt wiederherstellen. Laufende Server erkennen den Reset und bitten Spieler um erneuten Beitritt. Adminrechte, Geschenke und Einstellungen bleiben erhalten.
+Die Fremdsteuerung beschafft eine freie Schusswaffe oder eine Pistole, hebt sie auf und steuert Bewegung, Zielen, Schießen und Nachladen. Gameplay-Tasten und Menüklicks sind währenddessen gesperrt. Der Zielauftrag hat kein Zeitlimit und wird nach einem Tod/Respawn des Trägers im laufenden Server fortgesetzt. Er endet, wenn die ausgewählte Zielperson stirbt. Verlässt sie den Server, wird nicht heimlich ein anderes Ziel gewählt. Normale Rampages behalten ihre festgelegte Dauer.
 
-## Codes
+Das Programmieren eines Virus kostet **$250 plus den Blank-Chip**, auch für Admins. Ein direkt eingesetzter Virus hat **15 Sekunden Verzögerung**; ein Video-Trojaner beginnt diesen Countdown nach der Wiedergabe. Auch biologische Virus-Symptome haben 15 Sekunden Inkubation.
 
-Im vorhandenen Code-Menü einlösen:
+## Jobs
 
-| Code | Belohnung |
-| --- | --- |
-| `netrunner` | **$200 und ein zufälliger, noch nicht besessener Waffenskin** |
-| `chips` | **$1–500 und ein bis zwei zufällige, noch nicht besessene Waffenskins** |
+| Auftrag | Aufgabe | Geld |
+| --- | --- | --- |
+| Player Bounty | Eine vom Server ausgewählte lebende Spielerperson töten | $150 |
+| Three Kill Streak | Drei Spielerkills, ohne selbst zu sterben; NPCs zählen nicht | $200 |
+| Package Delivery | Ein echtes Paket zwischen zwei zufällig gewählten Orten tragen | $30 |
 
-Jeder Code ist einmal pro Spielstand einlösbar. Belohnung und Einlösestatus werden gemeinsam gespeichert. Sind bereits alle Waffenskins vorhanden, wird nur das Geld vergeben. Dauerhafte Einlösung erfolgt auf öffentlichen Servern; Studio erlaubt eine Sitzung zum Testen. Ohne funktionierende Speicherung wird auf öffentlichen Servern keine ungesicherte Belohnung ausgegeben.
+Es gibt einen aktiven Auftrag pro Person und ein Zeitlimit von zehn Minuten. Tod, Abbruch, Zeitüberschreitung oder verlorenes Ziel/Paket beenden den Auftrag mit **180 Sekunden Wartezeit**. Erfolgreiche Aufträge haben **keine Wartezeit**. Der Sperrzustand wird gespeichert; ein verlassener aktiver Auftrag zählt beim Wiederbeitritt als Fehlschlag.
 
-## Prüfung
+Paket-Routen wählen verschiedene Start- und Zielorte aus Baustelle, rotem Haus, Ripperdoc und Garage, soweit die aktuelle Map diese Orte bereitstellt. Am Start das Paket mit F aufnehmen. Für die Zustellung muss genau dieses Paket tatsächlich getragen oder in der eigenen Tasche sein und am Ziel ankommen. Ein selbst gespawntes Paket ersetzt es nicht.
 
-- Alle 154 Skripte aus der exportierten Datei mit dem offiziellen Luau-Compiler geprüft: bestanden.
-- 49 Gameplay-/Speicher-Assertions und 13 Freecam-/Berechtigungs-Assertions: bestanden. Diese Tests verwenden echte Modulquellen mit simulierten Roblox-Diensten.
-- XML erneut eingelesen, eindeutige Instanzreferenzen und alle Objektverweise geprüft. Die ursprünglichen Instanzeigenschaften außerhalb der Skriptquellen sind erhalten.
-- **Roblox Studio und echte Mehrspieler-/Grafiktests waren hier nicht verfügbar.** Die Tests belegen keine visuelle oder physikalische Laufzeitprüfung in Studio.
+## Admin-Menüs und Stillwater
 
-Vor dem Veröffentlichen in einer Testkopie mit mindestens zwei Spielern prüfen: Quickhack-Lock/Mausrad/F gegen einen Admin, Sandevistan-Tod/Respawn und Distanzgrenzen, Stillwater-Quest/Beschwören/überlappende Zeitstopps, denselben Krankenhausfilm auf beiden Clients, private Psychose-Erscheinungen, Freecam-Geschenk/Entzug/Wiederbeitritt und einmalige Code-Auszahlung. Den globalen Reset nur in einer getrennten Test-Experience mit eigenen Speichern ausprobieren. Visuell insbesondere Ripperdoc-Arbeitsflächen, Blackwall und kleine Bildschirme kontrollieren.
+- **M → ADMIN → WIPE ALL PROGRESS:** nur der Spielbesitzer, mit zweitem Bestätigungsklick. Der Reset gilt für sämtliche Konten und alle Server, auch für Offline-Spieler.
+- **M → PLAYERS → WIPE:** Einzel-Reset mit Bestätigung; ebenfalls über Server hinweg. Ein Admin kann den Spielbesitzer nicht zurücksetzen.
+- Betroffene anwesende Spieler bekommen den Kopfexplosionseffekt und werden nach zwei Sekunden zum erneuten Beitritt aufgefordert. Andere Server erhalten die Änderung per MessagingService und prüfen zusätzlich regelmäßig den Speicher. Offline-Spieler laden beim nächsten Beitritt einen neuen Spielstand.
+- Alte laufende Speichervorgänge bleiben in der alten Generation und können gelöschten Fortschritt nicht wiederherstellen. Einstellungen und Admin-Geschenke sind getrennt von Spiel-Fortschritt.
+- **M → GIFT LOG:** gespeicherte Geschenke seitenweise anzeigen, über User ID suchen und mit Bestätigung entfernen, auch wenn die Person offline ist. Normale Admins können ihre eigenen Geschenke verwalten; der Spielbesitzer sieht auch alte Geschenke ohne dokumentierten Absender und Geschenke anderer Admins. Offline-Änderungen werden feldweise gespeichert, damit andere Geschenke erhalten bleiben. Änderungen werden auf anderen Servern nachgeladen; die regelmäßige Prüfung dient als Rückfall bei ausgefallenen Nachrichten.
+- **T → Weapons → Stillwater + Sheath (quest):** erstellt Schwert und Scheide zusammen, nur nach abgeschlossener Quest. Automatisches Ausrüsten beim Spawn bleibt abgeschaltet.
+- Freecam weiter über **M → GIFTS → FREECAM** verschenken; Empfänger nutzen **U**. Entziehen beendet eine aktive Freecam.
 
-`RagdollSandbox_v3_0_Quellen_und_Tests.zip` enthält die Quellen nach Studio-Pfad, die Änderungen als Diff, Testharnesses und den Exportprüfbericht.
+## Weitere Steuerung und Codes
+
+**K:** Chip-Inventar. **I:** bisheriger Admin-Zeitstopp. **F4:** Quickhack-Modus. **M:** Einstellungen/Admin. **T:** Spawnmenü.
+
+`netrunner` gibt einmalig **$200 + einen noch nicht besessenen Waffenskin**. `chips` gibt einmalig **$1–500 + ein bis zwei noch nicht besessene Waffenskins**. Sind alle Skins vorhanden, bleibt die Geldbelohnung. Dauerhafte Einlösung benötigt funktionierende öffentliche Speicherung; Studio kann nur die Sitzung testen.
+
+## Prüfung und noch nötiger Studio-Test
+
+159 Skripte aus der exportierten Datei kompilieren. **150 Assertions** mit aktuellen Quellen und simulierten Roblox-Diensten bestehen. XML, Referenzen, Quellenübereinstimmung und Erhalt der bestehenden Welteigenschaften sind geprüft.
+
+**Ein echter Roblox-Studio-/Mehrspieler-/Grafiktest wurde hier nicht ausgeführt.** Vor dem Veröffentlichen mit mindestens zwei Clients prüfen:
+
+1. Unveröffentlichten Place starten; F4 öffnen, Spieler locken, Mausrad/F nutzen. F mit Chip, SLOT/EJECT/TAKE sowie Kameraaufnahme ausprobieren.
+2. Admin-Immunität ohne Implantate ausschalten; danach Überlastung mit Implantaten und gezielten Virusangriff getrennt prüfen.
+3. Zielvirus einsetzen: Auswahl beim Einsetzenden, 15 Sekunden warten, keine eigene Steuerung, sichtbare Waffenaufnahme, Fortsetzung nach Trägertod und Ende nach Zieltod.
+4. PvP-Jobs mit echten Spielern abschließen/verlieren; 180 Sekunden nach Fehlschlag, keine Sperre nach Erfolg. Paket wirklich transportieren und Routen wechseln.
+5. Dodge an freien Stellen und neben Wänden; Aegis vor und nach Schildbruch; keine Löcher bei vollständig abgewehrten Treffern.
+6. Ripperdoc-Theke, Boden in eigenen Videos und Krankenhaus-Bildschirm sowie Stillwater-Summon kontrollieren.
+7. Geschenke geben, Empfänger ausloggen, offline entziehen und erneut beitreten. Serverübergreifende Entziehung und Einzel-/Gesamt-Reset ausschließlich in einer getrennten Test-Experience prüfen.

@@ -744,6 +744,7 @@ function QuestClient.Init()
 		end
 	end)
 	UserInputService.InputBegan:Connect(function(io)
+		if Input.IsControlled() then return end
 		if dialog and io.KeyCode == Enum.KeyCode.Escape then
 			closeDialog()
 		end

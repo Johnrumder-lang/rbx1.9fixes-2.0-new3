@@ -498,6 +498,7 @@ local function dropItem(item: Model)
 		return
 	end
 	items[item] = nil
+	if rec.by.Parent then GripRemote:FireClient(rec.by, "release", item, rec.side) end
 	if item:GetAttribute("SawOn") then
 		item:SetAttribute("SawOn", nil) -- (v2.0) a chainsaw that is let go stalls
 	end
@@ -901,6 +902,18 @@ function OwnershipService.HeldItemSides(player: Player): { [string]: Model }
 	return out
 end
 
+-- Server-assigned equipment must also update the owning client's hand state.
+function OwnershipService.Equip(player: Player, item: Model, side: string?): boolean
+	local hand = side == "Left" and "Left" or "Right"
+	local held = OwnershipService.HeldItemSides(player)[hand]
+	if held and held ~= item then dropItem(held) end
+	if not item.PrimaryPart then return false end
+	OwnershipService.Grab(player, item.PrimaryPart, hand)
+	if OwnershipService.ItemHolder(item) ~= player then return false end
+	GripRemote:FireClient(player, "equip", item, hand)
+	return true
+end
+
 -- the body a player is dragging / holding (bandaging someone else)
 function OwnershipService.HeldBody(player: Player): Model?
 	for victim, d in drags do
@@ -1081,6 +1094,7 @@ end
 
 function OwnershipService.Init()
 	GripRemote.OnServerEvent:Connect(function(player, action, part, side, localPoint)
+		if player.Character and player.Character:GetAttribute("ControlActive") then return end
 		if typeof(part) ~= "Instance" or not part:IsA("BasePart") or not part:IsDescendantOf(workspace) then
 			return
 		end

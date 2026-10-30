@@ -1,0 +1,13 @@
+-- Full profile code with mock DataStore callbacks, including retries and failures.
+local function profile() return {cash=10,owned={},equipped={},ledgerUnlocked=false,ledgerApples=0,cyber={},look={},sword=0,swordProg=0,chips={},codes={},loaded=true,canSave=true,dirty=false} end
+local persisted
+local store={UpdateAsync=function(_,key,cb) local proposal=cb(persisted); if proposal then proposal=cb(persisted); persisted=proposal end; return persisted end}
+local payer=player(40,vec(0,0,0))
+local prof=profile();Persist._setup(payer,prof,store)
+local ok=Persist.ClaimCode(payer,"netrunner",200,{"pistol_1"})
+check(ok,"bundle claimed");eq(prof.cash,210,"cash paid once despite UpdateAsync retry");check(prof.owned.pistol_1,"skin granted");check(persisted.codes.netrunner,"receipt committed");eq(persisted.cash,210,"cash committed with receipt")
+check(not Persist.ClaimCode(payer,"netrunner",200,{"pistol_2"}),"duplicate rejected");eq(prof.cash,210,"duplicate pays nothing")
+local other=profile();Persist._setup(payer,other,store)
+check(not Persist.ClaimCode(payer,"netrunner",200,{"pistol_2"}),"other session receipt rejected");eq(other.cash,10,"other session not paid")
+local failed=profile();Persist._setup(payer,failed,{UpdateAsync=function() error("service unavailable") end})
+check(not Persist.ClaimCode(payer,"chips",499,{"skin_2","skin_3"}),"failed storage rejects claim");eq(failed.cash,10,"failed claim leaves money untouched");check(not failed.codes.chips,"failed claim remains redeemable")

@@ -1,0 +1,25 @@
+do
+ local blocked=false;local moved=0
+ workspace.GetServerTimeNow=function() return 5000 end
+ workspace.Blockcast=function() return blocked and {} or nil end
+ workspace.Raycast=function() return {Position=vec(0,-3,0),Normal=vec(0,1,0)} end
+ local own={HeldItems=function() return {} end}
+ Chip._setup({OwnershipService=own},{FireClient=function() end})
+ for tier=1,3 do
+  local p=player(120+tier,vec(0,3,0));Players.list={p}
+  local ch=p.Character;local root=ch.children.Torso;root.CFrame={RightVector=vec(1,0,0)}
+  ch.GetPivot=function() return setmetatable({}, {__add=function(_,delta) return {Position=root.Position+delta} end}) end
+  ch.PivotTo=function(_,cf) moved+=1;root.Position=cf.Position end
+  Chip._states[p]={slots={[1]={id="dodge",tier=tier}},bag={},dodgeLeft=tier,dodgeRefill=0}
+  check(Chip._dodge(ch,vec(0,3,0),vec(0,0,1)),"tier "..tier.." dodges")
+  check(math.abs(root.Position.X)>2.5,"dodge physically sidesteps")
+  eq(Chip._states[p].dodgeLeft,tier-1,"dodge consumes one charge")
+  check(Chip._dodge(ch,vec(0,3,0),vec(0,0,1)),"same volley remains dodged")
+  eq(Chip._states[p].dodgeLeft,tier-1,"same volley does not consume another charge")
+  ch:SetAttribute("DodgeUntil",nil);Chip._states[p].dodgeLeft=1;blocked=true
+  check(not Chip._dodge(ch,vec(0,3,0),vec(0,0,1)),"blocked lanes prevent teleport")
+  eq(Chip._states[p].dodgeLeft,1,"blocked dodge keeps charge")
+  blocked=false
+ end
+ eq(moved,3,"one physical move per volley")
+end

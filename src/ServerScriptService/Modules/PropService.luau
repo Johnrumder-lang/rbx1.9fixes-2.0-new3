@@ -115,6 +115,15 @@ function PropService.Place(itemId: string, cf: CFrame, spawner: Player?): Instan
 end
 
 local function spawnFor(player: Player, itemId: string)
+	if player.Character and player.Character:GetAttribute("ControlActive") then return end
+	if itemId == "stillwater_set" then
+		local sword = require(script.Parent.StillCutService)
+		if not (sword.Owns and sword.Owns(player)) then player:SetAttribute("SpawnDenied", "Complete the Stillwater quest first.|" .. os.clock()); return end
+		if os.clock() - (lastSpawn[player] or 0) < 2 then return end
+		lastSpawn[player] = os.clock()
+		sword.GiveGear(player); player:SetAttribute("StillwaterSummoned", true)
+		return
+	end
 	local item = PropCatalog.ById[itemId]
 	if not item or (item.ownerOnly and not Items.Has(player, item.id)) then
 		return

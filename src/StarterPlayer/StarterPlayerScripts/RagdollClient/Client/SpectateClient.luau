@@ -142,6 +142,7 @@ function SpectateClient.Init()
 		end
 	end)
 	UserInputService.InputBegan:Connect(function(io, processed)
+		if Input.IsControlled() then return end
 		if processed then
 			return
 		end

@@ -300,7 +300,7 @@ function ChipService.Take(p: Player, uid: number)
 	changed(p)
 	-- put it in the hand
 	if item.PrimaryPart then
-		pcall(deps.OwnershipService.Grab, p, item.PrimaryPart, "Right")
+		pcall(deps.OwnershipService.Equip, p, item, "Right")
 	end
 end
 
@@ -360,8 +360,8 @@ local function cashOf(p: Player): number
 	return typeof(c) == "number" and c or 0
 end
 
-local function pay(p: Player, n: number, why: string): boolean
-	if n <= 0 or Items.IsOwner(p) then
+local function pay(p: Player, n: number, why: string, chargeAdmin: boolean?): boolean
+	if n <= 0 or (Items.IsOwner(p) and not chargeAdmin) then
 		return true
 	end
 	if cashOf(p) < n then
@@ -433,7 +433,7 @@ function ChipService.Program(p: Player, uid: any, payload: any, tier: any, targe
 		return
 	end
 	tier = math.clamp(typeof(tier) == "number" and math.floor(tier) or 1, 1, 3)
-	if not pay(p, Config.VirusPrice, "virus") then
+	if not pay(p, Config.VirusPrice, "virus", true) then
 		say(p, string.format("A VIRUS IS $%d.", Config.VirusPrice))
 		return
 	end
@@ -554,6 +554,7 @@ function ChipService.Hit(victim: Model, effect: string, tier: number, attacker: 
 		if effect == "killtarget" then
 			targetUserId = attacker and attacker.UserId or nil -- (set by the caller via opts normally)
 		end
+		if vp then require(script.Parent.ControlService).Start(vp, nil, dur) end
 		fxTo(vp, "rampage", dur, targetUserId)
 		if not vp then
 			-- an NPC / bot: turn it hostile where it stands (best-effort)
@@ -735,17 +736,12 @@ function ChipService.PlayHeld(p: Player, item: Model)
 	if not chip then
 		return
 	end
-	if not chip.clip then
-		say(p, "THIS CHIP HAS NO VIDEO.")
-		return
-	end
-	if ChipService.Camera then
-		ChipService.Camera.Play(p, chip.clip, chip.trojan and chip or nil, p)
-	end
+	returnChipToBag(p, item, chip)
+	Remote:FireClient(p, "opendeck")
 end
 
 -- grab somebody + F with a chip in the other hand: push it into them
-function ChipService.InsertHeld(p: Player, item: Model)
+function ChipService.InsertHeld(p: Player, item: Model, targetId: number?)
 	if deps.OwnershipService.ItemHolder(item) ~= p then
 		return
 	end
@@ -758,6 +754,13 @@ function ChipService.InsertHeld(p: Player, item: Model)
 	if not victim or not vp then
 		say(p, "GRAB SOMEBODY FIRST (Q / E).")
 		return
+	end
+	if victim:GetAttribute("Dead") or not alive(p) then return end
+	if chip.payload == "killtarget" then
+		if targetId == nil then Remote:FireClient(p, "picktarget", item, vp.UserId); return end
+		local target = typeof(targetId) == "number" and Players:GetPlayerByUserId(targetId)
+		if not target or target == vp or not alive(target) then say(p, "CHOOSE A LIVING TARGET OTHER THAN THE CARRIER."); return end
+		chip.target = targetId
 	end
 	-- the chip is used up going in
 	if item.Parent then
@@ -778,29 +781,24 @@ end
 
 -- a virus payload fires on a victim (from a direct insert, or a trojan video ending)
 function ChipService.FirePayload(victim: Model, chip: Chip, attacker: Player?)
-	local payload = chip.payload
-	if not payload then
-		return
-	end
-	local effect = payload
-	if payload == "rampage" then
-		effect = "psycho"
-	end
-	local landed
-	if payload == "killtarget" then
-		-- they go after the attacker (or the stored target)
+	if not chip.payload or not victim or victim:GetAttribute("Dead") then return end
+	local payload = table.clone(chip)
+	if attacker then say(attacker, "VIRUS ARMED — ACTIVATES IN 15 SECONDS.") end
+	task.delay(15, function()
+		if not victim.Parent or victim:GetAttribute("Dead") then return end
 		local vp = Players:GetPlayerFromCharacter(victim)
-		local target = chip.target or (attacker and attacker.UserId) or nil
-		if vp and firewallOf(vp) < chip.tier then
-			Remote:FireClient(vp, "rampage", 14, target)
-			landed = true
+		if vp and vp.Character ~= victim then return end
+		local landed = false
+		if payload.payload == "killtarget" then
+			if vp and typeof(payload.target) == "number" and not deps.DamageService.Protected(victim, attacker) and firewallOf(vp) < payload.tier then
+				landed = require(script.Parent.ControlService).Start(vp, payload.target, nil)
+				if landed then fxTo(vp, "rampage", 5, payload.target) end
+			else fxTo(vp, "blocked") end
+		else
+			landed = ChipService.Hit(victim, payload.payload == "rampage" and "psycho" or payload.payload, payload.tier, attacker, true)
 		end
-	else
-		landed = ChipService.Hit(victim, effect, chip.tier, attacker, true)
-	end
-	if landed and attacker then
-		say(attacker, "PAYLOAD DELIVERED.")
-	end
+		if landed and attacker and attacker.Parent then say(attacker, "PAYLOAD ACTIVE.") end
+	end)
 end
 
 ------------------------------------------------------------------------
@@ -831,29 +829,36 @@ local function tryDodge(model: Model, point: Vector3, dir: Vector3): boolean
 	end
 	local st = states[p]
 	local t = dodgeTier(p)
+	if (model:GetAttribute("DodgeUntil") or 0) > workspace:GetServerTimeNow() then return true end
 	if not st or t <= 0 or st.dodgeLeft <= 0 then
 		return false
 	end
+	if (model:GetAttribute("DodgeUntil") or 0) > workspace:GetServerTimeNow() then return true end
+	local torso = model:FindFirstChild("Torso")
+	if not torso or (model:GetAttribute("TemporalFrozenUntil") or 0) > workspace:GetServerTimeNow() then return false end
+	local side = dir:Cross(Vector3.yAxis)
+	if side.Magnitude < 0.1 then side = torso.CFrame.RightVector end
+	side = side.Unit * (rng:NextNumber() < 0.5 and 1 or -1)
+	local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Exclude
+	local ignore = { model }
+	for _, held in deps.OwnershipService.HeldItems(p) do table.insert(ignore, held) end
+	local fx = workspace:FindFirstChild("FX"); if fx then table.insert(ignore, fx) end
+	rp.FilterDescendantsInstances = ignore; rp.RespectCanCollide = true
+	local displacement
+	for _, distance in { 3.8, -3.8, 2.6, -2.6 } do
+		local delta = side * distance
+		local wall = workspace:Blockcast(torso.CFrame, Vector3.new(2.4, 4.8, 2), delta, rp)
+		local floor = workspace:Raycast(torso.Position + delta, Vector3.new(0, -7, 0), rp)
+		if not wall and floor and floor.Normal.Y > 0.6 then displacement = delta; break end
+	end
+	if not displacement then return false end -- no free lane: the incoming shot can hit
 	st.dodgeLeft -= 1
-	if st.dodgeLeft <= 0 then
-		st.dodgeRefill = os.clock() + 20
-	end
+	if st.dodgeLeft <= 0 then st.dodgeRefill = os.clock() + 20 end
 	p:SetAttribute("ChipDodge", st.dodgeLeft > 0 and st.dodgeLeft or nil)
-	Remote:FireClient(p, "dodge")
-	-- tier 3 also nudges the body aside
-	if t >= 3 then
-		local torso = model:FindFirstChild("Torso")
-		if torso and torso:IsA("BasePart") then
-			local side = dir:Cross(Vector3.yAxis)
-			if side.Magnitude > 0.1 then
-				side = side.Unit * (rng:NextNumber() < 0.5 and 1 or -1)
-				pcall(function()
-					torso:ApplyImpulse(side * 22 * torso.AssemblyMass)
-				end)
-			end
-		end
-	end
-	local _ = point
+	model:SetAttribute("DodgeUntil", workspace:GetServerTimeNow() + 0.16)
+	local destination = model:GetPivot() + displacement
+	model:PivotTo(destination)
+	Remote:FireClient(p, "dodge", destination)
 	return true
 end
 
@@ -883,6 +888,7 @@ function ChipService.Init(d: any)
 	local requests = {}
 	Remote.OnServerEvent:Connect(function(p, action, a, b, c, dd)
 		if typeof(action) ~= "string" then return end
+		if p.Character and p.Character:GetAttribute("ControlActive") then return end
 		local t = os.clock()
 		local r = requests[p]
 		if not r or t - r.t > 1 then r = { t = t, n = 0 }; requests[p] = r end
@@ -912,8 +918,13 @@ function ChipService.Init(d: any)
 			end
 		elseif action == "insert" then
 			if typeof(a) == "Instance" and a:IsA("Model") then
-				ChipService.InsertHeld(p, a)
+				ChipService.InsertHeld(p, a, b)
 			end
+		elseif action == "helduse" and typeof(a) == "Instance" and a:IsA("Model") then
+			if deps.OwnershipService.HeldBody(p) then ChipService.InsertHeld(p, a) else ChipService.PlayHeld(p, a) end
+		elseif action == "playbag" then
+			local _, chip = findBag(stOf(p), a)
+			if chip and chip.clip and ChipService.Camera then ChipService.Camera.Play(p, chip.clip, chip.trojan and chip or nil, p) end
 		elseif action == "buy" then
 			ChipService.Buy(p, a, b)
 		elseif action == "sell" then

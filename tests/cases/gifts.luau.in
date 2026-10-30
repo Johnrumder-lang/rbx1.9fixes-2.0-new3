@@ -1,0 +1,23 @@
+do
+ local saved={g_92={powers={"freecam","fly"},titles={},admin=false,rev=1,granters={["power:freecam"]=91,["power:fly"]=93}}}
+ local store={GetAsync=function(_,k) return saved[k] end,UpdateAsync=function(_,k,fn) local d=fn(saved[k]);if d then saved[k]=d end;return d end}
+ local Items={POWERS={"freecam","fly"},IsOwner=function(p) return p.admin end,IsGameOwner=function(p) return p.UserId==90 end}
+ local services={Players=Players,DataStoreService={GetDataStore=function() return store end},RunService={IsStudio=function() return false end},MessagingService={SubscribeAsync=function() end,PublishAsync=function() end}}
+ local game={GameId=1,ReplicatedStorage={Shared={Items=Items,Titles={List={},ById={}},Config={GiftStoreName="gifts"}},Remotes={}},GetService=function(_,n) return services[n] end}
+ local script={Parent={SaveGate={CanSave=function() return true end}}}
+ local task={spawn=function() end,wait=function() end}
+ local Instance={new=function() return {OnServerEvent=event(),FireClient=function() end} end}
+ local Registry=(function()
+ @MODULE:GiftRegistry@
+ end)()
+ local admin=player(91,vec(0,0,0),true);local owner=player(90,vec(0,0,0),true);Players.list={admin,owner}
+ Registry.Init(function() end)
+ check(Registry.Set(admin,92,"power:freecam",false),"admin revokes own offline gift")
+ check(not table.find(saved.g_92.powers,"freecam"),"offline removal saved")
+ check(table.find(saved.g_92.powers,"fly")~=nil,"unrelated gift preserved")
+ check(not Registry.Set(admin,92,"power:fly",false),"admin cannot revoke someone else's offline gift")
+ check(Registry.Set(owner,92,"power:fly",false),"owner can manage legacy and other gifts")
+ eq(#saved.g_92.powers,0,"all selected gifts removed")
+ check(not Registry.Set(admin,92,"admin",true),"nonowner cannot gift admin")
+ check(not Registry.Set(admin,92,"power:unknown",true),"unlisted power rejected")
+end

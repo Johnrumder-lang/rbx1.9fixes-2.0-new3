@@ -139,7 +139,7 @@ local function firstFreeSlot(): number?
 	return nil
 end
 
--- O enters an in-world targeting mode. K only manages installed chips.
+-- F4 enters an in-world targeting mode. K only manages installed chips.
 local CAS = game:GetService("ContextActionService")
 local hackMode, hackIndex = false, 1
 local hackTarget: Player? = nil
@@ -184,7 +184,7 @@ local function targetVisible(p: Player): boolean
 	return not hit or hit.Instance:IsDescendantOf(ch)
 end
 local function executeHack()
-	if not hackMode or UserInputService:GetFocusedTextBox() then return end
+	if not hackMode or Input.IsControlled() or UserInputService:GetFocusedTextBox() then return end
 	if not hackTarget or not targetVisible(hackTarget) then
 		toast("NO CLEAR TARGET — AIM AT A PLAYER")
 		SoundLibrary.Play("dryfire", nil, 0.5)
@@ -204,7 +204,7 @@ local function startHackControls()
 	hackTitle = UI.label({ Text = "QUICKHACK MODE", Position = UDim2.fromOffset(14, 12), Size = UDim2.fromOffset(282, 24), TextSize = 18, Parent = hackHud })
 	hackStatus = UI.label({ Text = "AIM AT A PLAYER", Position = UDim2.fromOffset(14, 40), Size = UDim2.fromOffset(282, 38), TextWrapped = true, TextSize = 13, TextColor3 = C.dim, Parent = hackHud })
 	hackList = UI.label({ Text = "", Position = UDim2.fromOffset(14, 82), Size = UDim2.fromOffset(282, 110), TextSize = 14, TextYAlignment = Enum.TextYAlignment.Top, Parent = hackHud })
-	UI.label({ Text = "WHEEL  Select    F  Execute    O  Exit", Position = UDim2.fromOffset(14, 200), Size = UDim2.fromOffset(285, 22), TextSize = 12, TextColor3 = C.dim, Parent = hackHud })
+	UI.label({ Text = "WHEEL  Select    F  Execute    F4  Exit", Position = UDim2.fromOffset(14, 200), Size = UDim2.fromOffset(285, 22), TextSize = 12, TextColor3 = C.dim, Parent = hackHud })
 	local function fit()
 		local vs = workspace.CurrentCamera.ViewportSize
 		hackHud.Position = UDim2.fromOffset(math.max(8, vs.X - 330), math.max(72, vs.Y * 0.34))
@@ -213,12 +213,28 @@ local function startHackControls()
 	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fit)
 	CAS:BindActionAtPriority("QuickhackMode", function(_, state)
 		if state == Enum.UserInputState.Begin and not UserInputService:GetFocusedTextBox() then
-			if not Input.menuOpen and not Input.cutscene and not Input.keysCaptured and not Input.freeCam then
+			if not Input.IsControlled() and not Input.menuOpen and not Input.cutscene and not Input.keysCaptured and not Input.freeCam then
 				setHackMode(not hackMode)
 			end
 		end
 		return Enum.ContextActionResult.Sink
-	end, false, 4000, Enum.KeyCode.O)
+	end, false, 4000, Enum.KeyCode.F4)
+	CAS:BindActionAtPriority("HeldChipCamera", function(_, state)
+		if hackMode or Input.IsControlled() or Input.menuOpen or UserInputService:GetFocusedTextBox() then return Enum.ContextActionResult.Pass end
+		if controller and controller.hands then
+			for _, side in { "Left", "Right" } do
+				local hand = controller.hands[side]
+				local grip = hand and hand.grip
+				local item = grip and grip.item
+				local kind = item and item.Parent and Items.Kind(item)
+				if kind == "chip" or kind == "camera" then
+					if state == Enum.UserInputState.Begin then Remote:FireServer(kind == "chip" and "helduse" or "cam", item) end
+					return Enum.ContextActionResult.Sink
+				end
+			end
+		end
+		return Enum.ContextActionResult.Pass
+	end, false, 4500, Enum.KeyCode.F, Enum.KeyCode.ButtonX)
 	CAS:BindActionAtPriority("QuickhackExecute", function(_, state)
 		if not hackMode then return Enum.ContextActionResult.Pass end
 		if state == Enum.UserInputState.Begin then executeHack() end
@@ -238,7 +254,7 @@ local function startHackControls()
 	RunService.RenderStepped:Connect(function(dt)
 		if not hackMode then return end
 		local char = myChar()
-		if not char or char:GetAttribute("Dead") or (char:GetAttribute("TemporalFrozenUntil") or 0) > now() or Input.menuOpen or Input.cutscene or Input.freeCursor or Input.spectating or Input.freeCam then setHackMode(false); return end
+		if Input.IsControlled() or not char or char:GetAttribute("Dead") or (char:GetAttribute("TemporalFrozenUntil") or 0) > now() or Input.menuOpen or Input.cutscene or Input.freeCursor or Input.spectating or Input.freeCam then setHackMode(false); return end
 		elapsed += dt
 		if elapsed < 0.07 then return end
 		elapsed = 0
@@ -402,6 +418,9 @@ local function buildDeck()
 			UI.button({ Text = "TAKE", TextSize = 10, Position = UDim2.fromOffset(6, 30), Size = UDim2.fromOffset(60, 14), Parent = row }, function()
 				Remote:FireServer("take", uid)
 			end)
+			if chip.video then
+				UI.button({ Text = "PLAY", TextSize = 10, Position = UDim2.fromOffset(72, 30), Size = UDim2.fromOffset(60, 14), Parent = row }, function() Remote:FireServer("playbag", uid) end)
+			end
 			local slottable = not chip.video and chip.kind ~= "video"
 			if slottable then
 				UI.button({ Text = "SLOT", TextSize = 10, Position = UDim2.fromOffset(72, 30), Size = UDim2.fromOffset(60, 14), BackgroundColor3 = Color3.fromRGB(30, 60, 70), Parent = row }, function()
@@ -417,7 +436,7 @@ local function buildDeck()
 		end
 		bagList.CanvasSize = UDim2.fromOffset(0, h + 6)
 		netList:ClearAllChildren()
-		UI.label({ Text = "O  ENTER QUICKHACK MODE\n\nAim at a player to lock.\nScroll to select an installed hack.\nF executes the selected hack.\nO exits targeting mode.", TextSize = 15, TextWrapped = true, Position = UDim2.fromOffset(10, 10), Size = UDim2.new(1, -20, 1, -20), TextYAlignment = Enum.TextYAlignment.Top, Parent = netList })
+		UI.label({ Text = "F4  ENTER QUICKHACK MODE\n\nAim at a player to lock.\nScroll to select an installed hack.\nF executes the selected hack.\nF4 exits targeting mode.", TextSize = 15, TextWrapped = true, Position = UDim2.fromOffset(10, 10), Size = UDim2.new(1, -20, 1, -20), TextYAlignment = Enum.TextYAlignment.Top, Parent = netList })
 		hackRow:ClearAllChildren()
 		UI.label({ Text = "Install netrunner chips into your neck slots.\nThe target must stay in sight and in range.\nAdmins can be hacked too.", TextSize = 14, TextWrapped = true, Size = UDim2.new(1, -12, 1, -12), TextYAlignment = Enum.TextYAlignment.Top, Parent = hackRow })
 	end
@@ -574,51 +593,8 @@ local function rampage(dur: number, targetUserId: number?)
 	SoundLibrary.Play("heartbeat", nil, 1)
 	flashOverlay(Color3.fromRGB(120, 0, 160), 0.5, dur)
 	Hallucinations.Force(dur + 3, 1)
-	task.spawn(function()
-		while os.clock() < rampageUntil do
-			local me = torsoOf(myChar())
-			if me and controller and controller.ready and not controller.dead then
-				local best, bestD = nil, 120
-				if rampageTarget then
-					local tp = Players:GetPlayerByUserId(rampageTarget)
-					local t = tp and torsoOf(tp.Character)
-					if t and tp.Character and not tp.Character:GetAttribute("Dead") then
-						best, bestD = t, (t.Position - me.Position).Magnitude
-					end
-				end
-				if not best then
-					for _, m in allBodies() do
-						local t = torsoOf(m)
-						if t and m ~= myChar() and m:GetAttribute("Dead") ~= true then
-							local d = (t.Position - me.Position).Magnitude
-							if d < bestD then
-								best, bestD = t, d
-							end
-						end
-					end
-				end
-				if best then
-					local to = best.Position - (me.Position + Vector3.new(0, 1.5, 0))
-					Cam.yaw = math.atan2(-to.X, -to.Z)
-					Cam.pitch = math.clamp(math.asin(math.clamp(to.Unit.Y, -1, 1)), -1.2, 1.2)
-					-- charge them
-					if bestD > 6 then
-						local flat = Vector3.new(to.X, 0, to.Z)
-						if flat.Magnitude > 0.1 then
-							pcall(function()
-								me:ApplyImpulse(flat.Unit * 26 * me.AssemblyMass)
-							end)
-						end
-					end
-					Input.SetVirtual("Use", true)
-					task.wait(0.06)
-					Input.SetVirtual("Use", false)
-				end
-			end
-			task.wait(0.2)
-		end
-		Input.SetVirtual("Use", false)
-	end)
+	-- Movement, weapon acquisition and firing are driven by ControlService.
+
 end
 
 ------------------------------------------------------------------------
@@ -1018,6 +994,7 @@ local function playVideo(meta: any)
 		vp.CurrentCamera = cam
 		-- the place round the scene (copied from this machine's own map)
 		local center = typeof(meta.center) == "Vector3" and meta.center or Vector3.zero
+		require(script.Parent.ReplayGround).Copy(vp, center, 120)
 		local map = workspace:FindFirstChild("Map")
 		if map then
 			local op = OverlapParams.new()
@@ -1128,19 +1105,39 @@ end
 
 ------------------------------------------------------------------------
 
+local targetPicker
+local function pickVirusTarget(item, carrierId)
+	if targetPicker then targetPicker:Destroy() end
+	Input.freeCursor = true
+	targetPicker = UI.panel({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(420, 370), Parent = gui })
+	local function closePicker()
+		if targetPicker then targetPicker:Destroy(); targetPicker = nil end
+		Input.freeCursor = false
+	end
+	UI.label({ Text = "KILL DIRECTIVE / CHOOSE TARGET", TextSize = 18, Position = UDim2.fromOffset(12, 12), Size = UDim2.fromOffset(390, 28), Parent = targetPicker })
+	UI.label({ Text = "15 s incubation. Control lasts until this target dies.", TextSize = 12, Position = UDim2.fromOffset(12, 44), Size = UDim2.fromOffset(390, 25), Parent = targetPicker })
+	local list = UI.make("ScrollingFrame", { BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 80), Size = UDim2.fromOffset(396, 238), ScrollBarThickness = 3, Parent = targetPicker })
+	local y = 0
+	for _, target in Players:GetPlayers() do
+		if target.UserId ~= carrierId and target.Character and not target.Character:GetAttribute("Dead") then
+			UI.button({ Text = target.DisplayName .. "  @" .. target.Name, Position = UDim2.fromOffset(0, y), Size = UDim2.new(1, -6, 0, 32), Parent = list }, function()
+				Remote:FireServer("insert", item, target.UserId); closePicker()
+			end)
+			y += 38
+		end
+	end
+	list.CanvasSize = UDim2.fromOffset(0, y)
+	UI.button({ Text = "CANCEL", Position = UDim2.fromOffset(12, 330), Size = UDim2.fromOffset(396, 28), Parent = targetPicker }, closePicker)
+end
+
 function ChipClient.SetController(c: any)
 	controller = c
 end
 
 function ChipClient.Init()
 	local Remotes = ReplicatedStorage:WaitForChild("Remotes")
-	Remote = Remotes:WaitForChild("Chip", 20) :: RemoteEvent
-	if not Remote then
-		local r = Instance.new("RemoteEvent")
-		r.Name = "Chip"
-		r.Parent = Remotes
-		Remote = r
-	end
+	Remote = Remotes:WaitForChild("Chip") :: RemoteEvent
+
 	gui = UI.make("ScreenGui", { Name = "ChipGui", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 26, ZIndexBehavior = Enum.ZIndexBehavior.Sibling, Parent = player:WaitForChild("PlayerGui") })
 	overlay = UI.make("Frame", { BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 41, Parent = gui })
 	toastLabel = UI.label({ Text = "", TextSize = 20, TextColor3 = CYAN, TextTransparency = 1, TextStrokeTransparency = 1, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.26, 0), Size = UDim2.fromOffset(700, 26), Parent = gui })
@@ -1159,6 +1156,10 @@ function ChipClient.Init()
 					deckRefresh()
 				end
 			end
+		elseif action == "opendeck" then
+			ChipClient.OpenDeck()
+		elseif action == "picktarget" then
+			pickVirusTarget(a, b)
 		elseif action == "sound" and typeof(a) == "string" then
 			SoundLibrary.Play(a, nil, 0.65)
 		elseif action == "msg" or action == "cammsg" then
@@ -1179,6 +1180,7 @@ function ChipClient.Init()
 		elseif action == "blocked" then
 			toast("FIREWALL HELD", GREEN)
 		elseif action == "dodge" then
+			if typeof(a) == "CFrame" and player.Character then player.Character:PivotTo(a) end
 			flashOverlay(CYAN, 0.55, 0.3)
 			SoundLibrary.Play("whoosh", nil, 0.6)
 		elseif action == "uplink" and typeof(a) == "number" and typeof(b) == "number" then
@@ -1198,6 +1200,7 @@ function ChipClient.Init()
 
 	-- K: open the cyberdeck (unless you are an admin flying with the laser - then K is the laser)
 	UserInputService.InputBegan:Connect(function(io, processed)
+		if Input.IsControlled() then return end
 		if processed or io.KeyCode ~= Enum.KeyCode.K then
 			return
 		end
@@ -1210,6 +1213,7 @@ function ChipClient.Init()
 		ChipClient.ToggleDeck()
 	end)
 	UserInputService.InputBegan:Connect(function(io, processed)
+		if Input.IsControlled() then return end
 		if io.KeyCode == Enum.KeyCode.Escape then
 			setHackMode(false)
 			if deckOpen then

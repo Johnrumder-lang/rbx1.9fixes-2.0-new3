@@ -174,7 +174,7 @@ function CameraService.Init(d: any)
 	Remote = d.ChipService.Remote
 
 	Remote.OnServerEvent:Connect(function(p, action, a)
-		if action == "cam" then
+		if action == "cam" and not (p.Character and p.Character:GetAttribute("ControlActive")) then
 			if typeof(a) == "Instance" and a:IsA("Model") and a:IsDescendantOf(workspace) then
 				CameraService.Toggle(p, a)
 			end

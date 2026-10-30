@@ -4,7 +4,7 @@
 
 local Config = {}
 
-Config.Version = "v3.0"
+Config.Version = "v3.1"
 Config.GameName = "RAGDOLL SANDBOX"
 
 ------------------------------------------------------------------------
@@ -659,7 +659,7 @@ Config.LaserRange = 900
 -- virus (owner only): spreads between bodies close to each other, by sneezing, vomit and blood
 Config.VirusCloudTime = 8 -- s the cloud from a smashed bottle stays
 Config.VirusCloudRadius = 13
-Config.VirusIncubation = 6 -- s before the symptoms start
+Config.VirusIncubation = 15 -- s before the symptoms start
 Config.VirusSpreadRadius = 7 -- studs: being this close to a sick body can infect you
 Config.VirusSpreadChance = 0.18 -- per second while that close
 Config.VirusBloodChance = 0.35 -- per second standing in the blood / vomit of a sick body
@@ -1130,7 +1130,7 @@ Config.ZoomFov = { 45, 32, 20 } -- the field of view the ZOOM OPTICS pull to, pe
 Config.NetRange = 160 -- studs you can run a quickhack / the netrunner interface reaches
 Config.VirusPrice = 250 -- a virus bought at the computer (programmed onto a blank chip)
 Config.BlankPrice = 80 -- a blank chip at the computer
-Config.VirusArmTime = 2.4 -- s after a trojan video ends before the payload fires
+Config.VirusArmTime = 0 -- s after a trojan video ends before the payload fires
 -- (v2.9) a local Sandevistan: the slow field only reaches this far round the one who runs it (0 = the old whole-world slow)
 Config.SandevistanRadius = 70
 -- (v2.9) the STILL CUT only freezes what is inside the ring (bodies around you), not the whole server

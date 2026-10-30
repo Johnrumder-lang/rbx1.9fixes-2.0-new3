@@ -1,0 +1,53 @@
+local total=0
+local function check(ok,why) assert(ok,why);total+=1 end
+local function eq(a,b,why) check(a==b,(why or "mismatch")..": "..tostring(a).." / "..tostring(b)) end
+local realType=typeof
+local function typeof(v) return type(v)=="table" and v.__type or realType(v) end
+local vm={}
+local function vec(x,y,z) return setmetatable({X=x,Y=y,Z=z,__type="Vector3"},vm) end
+vm.__unm=function(a) return vec(-a.X,-a.Y,-a.Z) end
+vm.__sub=function(a,b) return vec(a.X-b.X,a.Y-b.Y,a.Z-b.Z) end
+vm.__add=function(a,b) return vec(a.X+b.X,a.Y+b.Y,a.Z+b.Z) end
+vm.__mul=function(a,b) if type(a)=="number" then a,b=b,a end;return vec(a.X*b,a.Y*b,a.Z*b) end
+vm.__index=function(a,k) if k=="Cross" then return function(a,b) return vec(a.Y*b.Z-a.Z*b.Y,a.Z*b.X-a.X*b.Z,a.X*b.Y-a.Y*b.X) end end;if k=="Magnitude" then return math.sqrt(a.X*a.X+a.Y*a.Y+a.Z*a.Z) end;if k=="Unit" then return a*(1/a.Magnitude) end end
+local RaycastParams={new=function() return {} end}
+local Enum={RaycastFilterType={Exclude=1,Include=2}}
+local Vector3={new=vec,zero=vec(0,0,0),yAxis=vec(0,1,0),one=vec(1,1,1)}
+local Color3={fromRGB=function(r,g,b) return {R=r/255,G=g/255,B=b/255} end,new=function(r,g,b) return {R=r,G=g,B=b} end}
+local function event() return {Connect=function(self,fn) self.callback=fn;return {Disconnect=function() end} end} end
+local function object(class)
+ local o={attrs={},children={},ClassName=class,Parent=true,__type="Instance"}
+ function o:GetAttribute(k) return self.attrs[k] end
+ function o:SetAttribute(k,v) self.attrs[k]=v end
+ function o:FindFirstChild(k) return self.children[k] end
+ function o:WaitForChild(k) return self.children[k] end
+ function o:GetChildren() return {} end
+ function o:GetDescendants() return {} end
+ function o:IsA(c) return self.ClassName==c or c=="Instance" end
+ function o:GetAttributeChangedSignal() return event() end
+ function o:Destroy() self.Parent=nil end
+ return o
+end
+local workspace=object("Workspace")
+function workspace:GetServerTimeNow() return 1000 end
+workspace.Gravity=196.2
+local Players={list={},PlayerAdded=event(),PlayerRemoving=event()}
+function Players:GetPlayers() return self.list end
+function Players:GetPlayerByUserId(id) for _,p in self.list do if p.UserId==id then return p end end end
+function Players:GetPlayerFromCharacter(c) for _,p in self.list do if p.Character==c then return p end end end
+local function player(id,pos,admin)
+ local p=object("Player");p.UserId=id;p.DisplayName="P"..id;p.admin=admin;p.CharacterAdded=event();p.Character=object("Model")
+ local torso=object("BasePart");torso.Position=pos;torso.Parent=p.Character;p.Character.children.Torso=torso;return p
+end
+local task={spawn=function() end,delay=function() end,wait=function() end}
+local Random={new=function() return {NextNumber=function(_,a,b) return a or .5 end,NextInteger=function(_,a) return a end} end}
+local shared=object("Folder");local replicated=object("Folder");replicated.children.Shared=shared
+local remotes=object("Folder");replicated.children.Remotes=remotes
+local modules=object("Folder");local script={Parent=modules}
+local game={GetService=function(_,name) if name=="Players" then return Players elseif name=="ReplicatedStorage" then return replicated end;return {} end}
+local require=function(m) return m end
+local Config={CyberTolerance=20,ChipSlots=4,SandevistanCycle=300,SandevistanDuration=10}
+shared.children.Config=Config
+local Items={IsOwner=function(p) return p.admin==true end,Has=function() return false end}
+shared.children.Items=Items
+modules.children.Persist={Get=function() return nil end};modules.children.SpineModel={}

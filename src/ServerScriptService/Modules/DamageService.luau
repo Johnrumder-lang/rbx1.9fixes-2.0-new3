@@ -764,20 +764,12 @@ function DamageService.ApplyBullet(model: Model, region: string, point: Vector3,
 		GoreService.FX({ t = "burst", p = point - dir * 0.15, d = -dir, n = 3, s = 10, black = true })
 		return
 	end
-	local chrome = (region == "LeftArm" and model:GetAttribute("Titan_L") ~= nil) or (region == "RightArm" and model:GetAttribute("Titan_R") ~= nil)
-	if chrome then
-		GoreService.Sound("metal", point, 0.9)
-	else
-		GoreService.Sound("bulletFlesh", point, 1)
-		-- (v2.0) a little back-spatter out of the entry wound (towards the shooter); a bullet that goes through
-		-- sprays forward out of the exit wound (GunService)
-		GoreService.Burst(point - dir * 0.15, -dir, pellet and 4 or 7, 9)
-	end
 	local wasSevered = model:GetAttribute("Severed_" .. region) == true
 	local wasBroken = model:GetAttribute("Broken_" .. region) == true
 	-- (v2.8.2) an AEGIS shield with charge left takes a head shot too (it drains the shield; the head's HP decide the rest)
 	local sh = model:GetAttribute("CyShield")
 	local shielded = typeof(sh) == "number" and sh >= 1
+	local hpBefore = model:GetAttribute("HP_" .. region) or Config.LimbMaxHP
 	DamageService.ApplyDamage(model, region, base, point, {
 		cause = region == "Head" and (cause .. " (head)") or cause,
 		allowSever = o.severAt ~= nil or o.allowSever == true,
@@ -787,6 +779,19 @@ function DamageService.ApplyBullet(model: Model, region: string, point: Vector3,
 		bleedTime = Config.BulletBleedTime,
 		attacker = shooter,
 	})
+	-- Damage modifiers (including AEGIS) resolve before any flesh feedback.
+	local hpAfter = model:GetAttribute("HP_" .. region) or hpBefore
+	if hpAfter >= hpBefore then return false end
+	local chrome = (region == "LeftArm" and model:GetAttribute("Titan_L") ~= nil) or (region == "RightArm" and model:GetAttribute("Titan_R") ~= nil)
+	if chrome then
+		GoreService.Sound("metal", point, 0.9)
+	else
+		GoreService.Sound("bulletFlesh", point, 1)
+		-- (v2.0) a little back-spatter out of the entry wound (towards the shooter); a bullet that goes through
+		-- sprays forward out of the exit wound (GunService)
+		GoreService.Burst(point - dir * 0.15, -dir, pellet and 4 or 7, 9)
+	end
+
 	if region == "Head" and not pellet and not shielded then
 		DamageService.Kill(model, cause .. " (head)")
 	end
@@ -805,6 +810,7 @@ function DamageService.ApplyBullet(model: Model, region: string, point: Vector3,
 	local push = (pellet and Config.PelletPush or Config.BulletPush) * DamageService.PartMass(model, region) * (o.push or 1)
 	local down = ((not pellet and region == "Torso") or (pellet and count >= 3)) and Config.BulletTorsoKnockdown or nil
 	DamageService.Knock(model, region, dir * push, down, point)
+	return true
 end
 
 -- a living player tore a stuck body part off a spike

@@ -43,6 +43,10 @@ Input.cutscene = false -- (v2.0) a cutscene runs: no moving, no actions
 Input.freeCam = false -- (v2.0) the admin free cam flies: no key / button reaches your body (FreeCam reads its own)
 
 Input.quickhackMode = false
+function Input.IsControlled(): boolean
+	local ch = Players.LocalPlayer.Character
+	return ch ~= nil and not ch:GetAttribute("Dead") and (ch:GetAttribute("ControlActive") == true or (ch:GetAttribute("CrashOut") or 0) > workspace:GetServerTimeNow())
+end
 local wheel = 0
 -- scroll wheel steps since the last call (only collected while wheelCapture is on)
 function Input.TakeWheel(): number
@@ -137,7 +141,7 @@ Input.REBIND = {
 }
 Input.RESERVED = {
 	W = true, A = true, S = true, D = true, Up = true, Down = true, Left = true, Right = true, Space = true, LeftShift = true,
-	RightShift = true, LeftControl = true, RightControl = true, Q = true, E = true, F = true, G = true, K = true, O = true, Escape = true,
+	RightShift = true, LeftControl = true, RightControl = true, Q = true, E = true, F = true, G = true, K = true, F4 = true, Escape = true,
 	Zero = true, One = true, Two = true, Three = true, Four = true, Five = true, Six = true, Seven = true, Eight = true,
 	Nine = true, Equals = true, Tab = true, Slash = true, Backquote = true, U = true, J = true, Return = true,
 }
@@ -206,11 +210,13 @@ end
 local virtual = { AimLeft = false, AimRight = false, Jump = false, Use = false, Aim = false, Laser = false, Down = false }
 
 function Input.FireAction(name: string)
+	if Input.IsControlled() then return end
 	actionEvent:Fire(name)
 end
 
 -- Mobile buttons: held states
 function Input.SetVirtual(name: string, down: boolean)
+	if Input.IsControlled() then return end
 	virtual[name] = down
 	if name == "AimLeft" then
 		Input.mouseLeft = down
@@ -300,6 +306,7 @@ function Input.Init()
 	end)
 
 	UserInputService.InputBegan:Connect(function(io, gameProcessed)
+		if Input.IsControlled() then return end
 		local t = io.UserInputType
 		if Input.freeCam then
 			return
@@ -374,6 +381,7 @@ function Input.Init()
 	end)
 
 	UserInputService.InputEnded:Connect(function(io)
+		if Input.IsControlled() then return end
 		local t = io.UserInputType
 		local k = io.KeyCode
 		if t == Enum.UserInputType.MouseButton1 or k == Enum.KeyCode.ButtonL2 then
@@ -396,6 +404,7 @@ function Input.Init()
 	end)
 
 	UserInputService.InputChanged:Connect(function(io, gameProcessed)
+		if Input.IsControlled() then return end
 		if not gameProcessed and Input.wheelCapture and io.UserInputType == Enum.UserInputType.MouseWheel then
 			wheel += io.Position.Z
 		end
@@ -433,6 +442,21 @@ task.spawn(function()
 end)
 
 function Input.GetMoveVector(): Vector3
+	if Input.IsControlled() then
+		local ch = Players.LocalPlayer.Character
+		local root, goal = ch:FindFirstChild("Torso"), ch:GetAttribute("ControlGoal")
+		if root and typeof(goal) == "Vector3" and ch:GetAttribute("ControlMove") then
+			local delta = goal - root.Position
+			local flat = Vector3.new(delta.X, 0, delta.Z)
+			if flat.Magnitude > 1 then
+				local camera = workspace.CurrentCamera
+				local localDir = camera.CFrame:VectorToObjectSpace(flat.Unit)
+				local v = Vector3.new(localDir.X, 0, localDir.Z)
+				return v.Magnitude > 0.01 and v.Unit or Vector3.zero
+			end
+		end
+		return Vector3.zero
+	end
 	if Input.spectating or Input.cutscene or Input.freeCam then
 		return Vector3.zero
 	end

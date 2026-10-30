@@ -1,0 +1,31 @@
+do
+ local meta, calls, publishes, delays = {},0,{},{}
+ local store={GetAsync=function(_,k) return meta[k] end,UpdateAsync=function(_,k,fn) meta[k]=fn(meta[k]);return meta[k] end}
+ local studio=true
+ local services={DataStoreService={GetDataStore=function() calls+=1;return store end},Players=Players,RunService={IsStudio=function() return studio end},MessagingService={PublishAsync=function(_,topic,d) table.insert(publishes,d) end,SubscribeAsync=function() end}}
+ local game={GameId=0,ReplicatedStorage={Shared={Items={IsGameOwner=function(p) return p.admin end,IsOwner=function(p) return p.admin end}}},GetService=function(_,n) return services[n] end}
+ local task={wait=function() end,spawn=function() end,delay=function(_,fn) table.insert(delays,fn) end}
+ local warn=function() end
+ local function loadEpoch()
+ @MODULE:ProgressEpoch@
+ end
+ local epoch=loadEpoch();epoch.Init()
+ check(epoch.Ready and epoch.SessionOnly,"unpublished Studio starts in memory")
+ eq(calls,0,"unpublished Studio never requests a DataStore")
+ eq(epoch.Key(100),"p_100","Studio legacy key")
+ game.GameId=1;studio=false;meta.epoch=3;meta.u_101=2
+ epoch=loadEpoch();epoch.Init()
+ eq(epoch.Key(100),"e3_p_100","global namespace")
+ eq(epoch.Key(101),"r2_e3_p_101","individual namespace")
+ local owner=player(9,vec(0,0,0),true);owner.Character=nil;Players.list={owner}
+ check(epoch.Wipe(owner,101),"individual reset accepted")
+ eq(meta.u_101,3,"individual generation increments")
+ eq(epoch.Key(101),"r2_e3_p_101","late saves remain in old player generation")
+ local fresh=loadEpoch();fresh.Init();eq(fresh.Key(101),"r3_e3_p_101","fresh server sees player reset")
+ check(epoch.Wipe(owner),"global reset accepted")
+ eq(meta.epoch,4,"global generation increments")
+ eq(epoch.Key(100),"e3_p_100","late global writes retain old namespace")
+ check(not epoch.Wipe(player(8,vec(0,0,0),false)),"ordinary player cannot reset progress")
+ services.DataStoreService.GetDataStore=function() error("unavailable") end
+ local failed=loadEpoch();failed.Init();check(not failed.Ready,"unavailable production metadata disables persistence without startup throw")
+end

@@ -6,6 +6,7 @@
 local Items = {}
 
 Items.Kinds = {
+	package = { name = "DELIVERY PACKAGE" },
 	pistol = { gun = true, name = "PISTOL" },
 	revolver = { gun = true, name = "REVOLVER" },
 	rifle = { gun = true, auto = true, name = "RIFLE" },

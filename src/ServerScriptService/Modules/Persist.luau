@@ -14,6 +14,8 @@ local Persist = {}
 
 export type Profile = {
 	jobsCompleted: number,
+	jobActive: boolean,
+	jobFailedUntil: number,
 	cash: number,
 	owned: { [string]: boolean },
 	equipped: { [string]: string },
@@ -63,7 +65,7 @@ local function encode(prof: Profile): any
 			table.insert(chips, { id = rec.id, tier = rec.tier, slot = rec.slot, payload = rec.payload, target = rec.target })
 		end
 	end
-	return { v = 1, jobs = prof.jobsCompleted or 0, cash = math.floor(prof.cash), owned = owned, eq = eq, lu = prof.ledgerUnlocked, la = prof.ledgerApples, cy = cy, lk = lk,
+	return { v = 1, jobActive = prof.jobActive == true, jobFailedUntil = prof.jobFailedUntil or 0, jobs = prof.jobsCompleted or 0, cash = math.floor(prof.cash), owned = owned, eq = eq, lu = prof.ledgerUnlocked, la = prof.ledgerApples, cy = cy, lk = lk,
 		sw = prof.sword, sp = prof.swordProg, ch = chips, codes = table.clone(prof.codes or {}) }
 end
 
@@ -206,7 +208,7 @@ end
 
 local function load(p: Player)
 	local prof: Profile = {
-		jobsCompleted = 0, cash = 0, owned = {}, equipped = {}, ledgerUnlocked = false, ledgerApples = 0, cyber = {}, look = {}, sword = 0, swordProg = 0,
+		jobsCompleted = 0, jobActive = false, jobFailedUntil = 0, cash = 0, owned = {}, equipped = {}, ledgerUnlocked = false, ledgerApples = 0, cyber = {}, look = {}, sword = 0, swordProg = 0,
 		chips = {}, codes = {},
 		loaded = false, canSave = false, dirty = false,
 	}
@@ -219,6 +221,8 @@ local function load(p: Player)
 			if ok then
 				if typeof(data) == "table" then
 					prof.jobsCompleted = typeof(data.jobs) == "number" and math.clamp(math.floor(data.jobs), 0, 1000000) or 0
+					prof.jobActive = data.jobActive == true
+					prof.jobFailedUntil = typeof(data.jobFailedUntil) == "number" and math.clamp(data.jobFailedUntil, 0, os.time() + 180) or 0
 					prof.codes = typeof(data.codes) == "table" and data.codes or {}
 					prof.cash = typeof(data.cash) == "number" and math.max(0, data.cash) or 0
 					for _, id in data.owned or {} do

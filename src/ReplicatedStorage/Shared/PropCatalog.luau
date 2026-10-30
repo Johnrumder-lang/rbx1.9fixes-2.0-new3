@@ -11,6 +11,8 @@ local PropCatalog = {}
 PropCatalog.Categories = { "Props", "Heavy", "Weapons", "Items", "Cars", "Bodies" }
 
 PropCatalog.Items = {
+	{ id = "package", name = "Package", category = "Items", builder = "package", size = Vector3.new(1.8, 1.4, 1.4), kg = 2 },
+	{ id = "stillwater_set", name = "Stillwater + Sheath (quest)", category = "Weapons", needs = "StillwaterUnlocked", builder = "stillwater", size = Vector3.new(1, 1, 6), kg = 3 },
 	{
 		id = "crate_small",
 		name = "Small Crate",

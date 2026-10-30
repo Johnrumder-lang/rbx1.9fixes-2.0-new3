@@ -275,6 +275,7 @@ local function buildSettingsPage(page: Frame)
 		end)
 		y += 32
 		UserInputService.InputBegan:Connect(function(io)
+		if Input.IsControlled() then return end
 			if not waiting or io.UserInputType ~= Enum.UserInputType.Keyboard then
 				return
 			end
@@ -628,9 +629,10 @@ local function buildPlayersPage(page: Frame)
 				continue
 			end
 			UI.label({ Text = p.DisplayName .. ((p:GetAttribute("Admin") or Items.IsGameOwner(p)) and "  (admin)" or ""), Font = UI.FONT_TITLE, TextSize = 15, Position = UDim2.fromOffset(12, y + 4), Size = UDim2.fromOffset(170, 20), Parent = list })
-			local acts = { { "kick", "KICK", C.bad }, { "bring", "BRING", C.panel2 }, { "goto", "GO TO", C.panel2 }, { "hotdog", "HOTDOG", C.accent } }
+			local acts = { { "kick", "KICK", C.bad }, { "bring", "BRING", C.panel2 }, { "goto", "GO TO", C.panel2 }, { "wipeplayer", "WIPE", C.bad } }
 			for i, a in acts do
-				UI.button({
+				local armed, button = false, nil
+				button = UI.button({
 					Text = a[2],
 					TextSize = 12,
 					BackgroundColor3 = a[3],
@@ -638,7 +640,12 @@ local function buildPlayersPage(page: Frame)
 					Position = UDim2.fromOffset(186 + (i - 1) * 84, y),
 					Parent = list,
 				}, function()
-					AdminRemote:FireServer(a[1], p.UserId)
+					if a[1] == "wipeplayer" then
+						if not armed then
+							armed = true; button.Text = "CONFIRM?"
+							task.delay(5, function() if button.Parent then armed = false; button.Text = "WIPE" end end)
+						else armed = false; button.Text = "SENT"; AdminRemote:FireServer("wipeplayer", p.UserId, "WIPE PLAYER") end
+					else AdminRemote:FireServer(a[1], p.UserId) end
 				end)
 			end
 			y += 32
@@ -1119,6 +1126,7 @@ local function build()
 	local tabList = { { "settings", "SETTINGS" }, { "skins", "SKINS" }, { "inventory", "INVENTORY" }, { "cyber", "CYBER" }, { "bounty", "BOUNTY" }, { "codes", "CODES" }, { "vote", "VOTE" } }
 	if Items.IsOwner(player) then
 		table.insert(tabList, { "gifts", "GIFTS" })
+		table.insert(tabList, { "giftlog", "GIFT LOG" })
 		table.insert(tabList, { "admin", "ADMIN" })
 		table.insert(tabList, { "players", "PLAYERS" })
 	end
@@ -1169,6 +1177,8 @@ local function build()
 			buildVotePage(page)
 		elseif t[1] == "gifts" then
 			buildGiftPage(page)
+		elseif t[1] == "giftlog" then
+			require(Modules.GiftRegistryClient).Build(page)
 		elseif t[1] == "players" then
 			buildPlayersPage(page)
 		elseif t[1] == "codes" then

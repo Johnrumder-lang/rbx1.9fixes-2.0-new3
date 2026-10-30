@@ -1,0 +1,57 @@
+do
+ local clock=2000;local os={clock=function() return clock end,time=function() return clock end};local workspace=workspace;workspace.GetServerTimeNow=function() return clock end
+ local Instance={new=function(class) local o=object(class);o.OnServerEvent=event();o.Triggered=event();o.FireClient=function() end;return o end}
+ local CFrame={new=function(p) return {Position=p} end}
+ local profiles={}
+ local moduleFolder={Persist={Get=function(p) profiles[p]=profiles[p] or {loaded=true};return profiles[p] end,Dirty=function() end}}
+ local script={Parent=moduleFolder}
+ local task={spawn=function() end,delay=function() end}
+ replicated.Remotes=remotes
+ local RaycastParams={new=function() return {} end}
+ local Enum={RaycastFilterType={Include=1},KeyCode={F=1}}
+ local Jobs=(function()
+ @MODULE:JobService@
+ end)()
+ local paid=0;local holder=nil;local package
+ local Damage={Protected=function() return false end}
+ local own={DropItem=function() end,ItemHolder=function() return holder end,Grab=function(p) holder=p end}
+ local props={Place=function(_,cf,p) package=object("Model");package.PrimaryPart=object("Part");package.PrimaryPart.Position=cf.Position;return package end}
+ Jobs.Init({DamageService=Damage,OwnershipService=own,PropService=props,SkinService={AddCash=function(_,n) paid+=n end}})
+ local a=player(71,vec(0,0,0));a.Name="A";local b=player(72,vec(8,0,0));b.Name="B";Players.list={a,b}
+ Jobs._accept(a,"assassination");check(Jobs._active[a]~=nil,"PvP assassination accepted")
+ eq(Jobs._active[a].targetPlayer,b,"assassination selects real player")
+ Damage.OnKill(b.Character,a,{})
+ eq(paid,150,"PvP bounty pays 150");check(b.Character.Parent,"completion never destroys target character")
+ Jobs._accept(a,"cleanup");check(Jobs._active[a]~=nil,"success has no cooldown")
+ local npc=object("Model");npc:SetAttribute("IsNPC",true);Damage.OnKill(npc,a,{})
+ eq(Jobs._active[a].progress,0,"NPC kill does not advance PvP job")
+ Damage.OnKill(b.Character,a,{});Damage.OnKill(b.Character,a,{})
+ eq(Jobs._active[a].progress,1,"duplicate callback counted once")
+ b.Character=player(0,vec(8,0,0)).Character;Damage.OnKill(b.Character,a,{})
+ b.Character=player(0,vec(8,0,0)).Character;Damage.OnKill(b.Character,a,{})
+ eq(paid,350,"three player kills pay 200")
+ Jobs._finish(a);eq(paid,350,"job cannot pay twice")
+ Jobs._accept(a,"cleanup");Damage.OnKill(a.Character,b,{})
+ check(Jobs._active[a]==nil,"death removes active job");eq(Jobs._cooldown[a],2180,"failure cooldown exactly 180 seconds")
+ Jobs._accept(a,"cleanup");check(Jobs._active[a]==nil,"failure blocks next job")
+ Jobs._cooldown[a]=nil;Jobs._accept(a,"cleanup");check(Jobs._active[a]==nil,"persisted failure survives local cooldown reset")
+ clock=2181;Jobs._accept(a,"cleanup");check(Jobs._active[a]~=nil,"job accepted after cooldown")
+ Jobs._fail(a);clock=2362
+ -- A physical package, with two distinct random endpoints. Standing at the destination alone never pays.
+ local map=object("Model");workspace.children.Map=map
+ local site=object("Part");site.Position=vec(-40,0,0);map.children.TeleportTarget_Site=site
+ local desk=object("Part");desk.Position=vec(40,0,0);map.children.RipperDeskSpot=desk
+ local RaycastParams={new=function() return {} end}
+ -- JobService captures RaycastParams from its lexical outer scope, supplied below by the shared harness.
+ workspace.Raycast=function(_,pos) return {Position=vec(pos.X,0,pos.Z),Normal=vec(0,1,0)} end
+ Jobs._accept(a,"courier");local job=Jobs._active[a]
+ check(job and job.package~=nil,"courier creates physical package")
+ check((job.point-job.destination).Magnitude>1,"courier start and finish differ")
+ a.Character.children.Torso.Position=job.destination
+ Jobs._tick();eq(paid,350,"cannot deliver without package")
+ holder=a;package.PrimaryPart.Position=a.Character.children.Torso.Position
+ Jobs._tick();eq(job.progress,1,"actual held package advances collection")
+ Jobs._tick();eq(paid,380,"real delivery pays 30")
+ check(not package.Parent,"completed package removed")
+ workspace.children.Map=nil
+end

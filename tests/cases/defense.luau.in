@@ -1,0 +1,43 @@
+do
+ local feedback=0
+ local GoreService={Sound=function() end,Burst=function() feedback+=1 end,FX=function() feedback+=1 end,Gibs=function() feedback+=1 end}
+ local Config={BulletDamage={Torso=50,Head=50},PelletDamage={Torso=10},BulletBleed={Torso=1,Head=1,Limb=1},BulletBleedTime=10,LimbMaxHP=100,BulletPush=1,PelletPush=1,BulletTorsoKnockdown=1}
+ local absorb=true
+ local DamageService={Protected=function() return false end,PartMass=function() return 1 end,Knock=function() end,Kill=function() end,ApplyDamage=function(m,r,d) if not absorb then m:SetAttribute("HP_"..r,(m:GetAttribute("HP_"..r) or 100)-d) end end}
+ @APPLYBULLET@
+ local target=object("Model");target:SetAttribute("HP_Torso",100);target:SetAttribute("CyShield",100)
+ DamageService.ApplyBullet(target,"Torso",vec(0,0,0),vec(0,0,1),nil,false)
+ eq(feedback,0,"Aegis absorption produces no flesh blood")
+ eq(target:GetAttribute("HP_Torso"),100,"absorbed hit preserves flesh HP")
+ absorb=false;DamageService.ShieldBullet=function() return true end
+ DamageService.ApplyBullet(target,"Torso",vec(0,0,0),vec(0,0,1),nil,false)
+ eq(feedback,0,"dodge produces no flesh feedback")
+ eq(target:GetAttribute("HP_Torso"),100,"dodged hit preserves flesh HP")
+ DamageService.ShieldBullet=nil
+ check(DamageService.ApplyBullet(target,"Torso",vec(0,0,0),vec(0,0,1),nil,false),"unblocked bullet accepted")
+ check(feedback>0,"unblocked shot still produces blood")
+ eq(target:GetAttribute("HP_Torso"),50,"unblocked damage applied")
+end
+do
+ local count=0
+ local part=object("BasePart");local body=object("Model");body.children.Torso=part;body:SetAttribute("HP_Torso",100)
+ part.CFrame={PointToObjectSpace=function(_,v) return v end};part.Size=vec(2,2,1)
+ local DamageService={BodyOf=function() return body,"Torso" end}
+ local GoreService={ExitHole=function() count+=1 end,FX=function() count+=1 end}
+ local GunService={}
+ local Config={PenetrationMaxParts=3,PenetrationDamageKeep=.7}
+ local RigInfo={RegionPart={Torso="Torso"}}
+ local Ballistics={ExitDistance=function() return 1 end}
+ local function baseParams() return {FilterDescendantsInstances={}} end
+ local function checkClaim() return nil end
+ local hit={Instance=part,Position=vec(0,0,2),Normal=vec(0,0,-1),Material={Name="Plastic"}}
+ local casts=0
+ local workspace={Raycast=function() casts+=1;if casts==1 then return hit end end}
+ @RESOLVE@
+ local result=resolve(nil,{},vec(0,0,0),vec(0,0,1),100,nil,false,1,function() end,nil,5)
+ eq(count,0,"blocked bullet creates neither exit hole nor tunnel")
+ eq(result.k,"shield","blocked hit is marked as shield")
+ casts=0
+ resolve(nil,{},vec(0,0,0),vec(0,0,1),100,nil,false,1,function() body:SetAttribute("HP_Torso",50) end,nil,5)
+ eq(count,2,"flesh penetration still emits exit and tunnel")
+end

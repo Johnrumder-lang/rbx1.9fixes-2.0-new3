@@ -1,0 +1,4 @@
+local p=player(10,vec(0,0,0));p.Character=nil
+Sandy.Grant(p,true,false);Sandy._states[p].firstUse=123;Sandy._states[p].level=27
+Sandy.Grant(p,true,false)
+eq(Sandy._states[p].firstUse,123,"respawn preserves cooling cycle");eq(Sandy._states[p].level,27,"respawn preserves stress");eq(Sandy._states[p].activeUntil,0,"grant cancels old field")

@@ -216,6 +216,7 @@ function SandevistanClient.Init()
 
 	local lastShift = 0
 	UserInputService.InputBegan:Connect(function(io, processed)
+		if Input.IsControlled() then return end
 		if UserInputService:GetFocusedTextBox() or (player:GetAttribute("HasSandevistan") ~= true and not Items.IsOwner(player)) then
 			return
 		end

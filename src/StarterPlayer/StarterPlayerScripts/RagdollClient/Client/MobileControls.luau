@@ -54,6 +54,7 @@ end
 -- hold button -> virtual held state
 local function hold(b: TextButton, name: string)
 	b.InputBegan:Connect(function(io)
+		if Input.IsControlled() then return end
 		if MobileControls.editing then
 			return
 		end
@@ -63,6 +64,7 @@ local function hold(b: TextButton, name: string)
 		end
 	end)
 	b.InputEnded:Connect(function(io)
+		if Input.IsControlled() then return end
 		if io.UserInputType == Enum.UserInputType.Touch or io.UserInputType == Enum.UserInputType.MouseButton1 then
 			Input.SetVirtual(name, false)
 			b.BackgroundTransparency = 0.25
@@ -309,6 +311,7 @@ function MobileControls.BuildEditor(f: Frame)
 	local dragInput: InputObject? = nil
 	for _, b in buttons do
 		b.InputBegan:Connect(function(io)
+		if Input.IsControlled() then return end
 			if MobileControls.editing and (io.UserInputType == Enum.UserInputType.Touch or io.UserInputType == Enum.UserInputType.MouseButton1) then
 				dragging = b
 				dragInput = io
@@ -316,6 +319,7 @@ function MobileControls.BuildEditor(f: Frame)
 		end)
 	end
 	UserInputService.InputChanged:Connect(function(io)
+		if Input.IsControlled() then return end
 		local b = dragging
 		if not b then
 			return
@@ -333,6 +337,7 @@ function MobileControls.BuildEditor(f: Frame)
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(io)
+		if Input.IsControlled() then return end
 		if dragging and (io.UserInputType == Enum.UserInputType.Touch or io.UserInputType == Enum.UserInputType.MouseButton1) then
 			dragging = nil
 			dragInput = nil

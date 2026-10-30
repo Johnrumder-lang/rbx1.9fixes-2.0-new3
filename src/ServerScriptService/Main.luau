@@ -546,8 +546,12 @@ for _, d in workspace:GetDescendants() do
 	promptOnF(d)
 end
 
-print(string.format("[%s %s] server ready", Config.GameName, Config.Version))
 
-require(Modules:WaitForChild("JobService")).Init({ NPCService = NPCService, DamageService = DamageService, SkinService = require(Modules.SkinService) })
+
+require(Modules:WaitForChild("JobService")).Init({ DamageService = DamageService, SkinService = require(Modules.SkinService), PropService = PropService, OwnershipService = OwnershipService })
 
 require(Modules:WaitForChild("PsychosisService")).Init({ DamageService = DamageService, GunService = GunService, ExplosionService = ExplosionService, OwnershipService = OwnershipService, CyberService = require(Modules.CyberService) })
+
+require(Modules.ControlService).Init({ DamageService = DamageService, OwnershipService = OwnershipService, PropService = PropService, GunService = GunService, ItemService = ItemService })
+
+print(string.format("[%s %s] server ready", Config.GameName, Config.Version))

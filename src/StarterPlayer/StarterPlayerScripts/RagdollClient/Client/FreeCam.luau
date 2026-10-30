@@ -277,6 +277,7 @@ end
 
 function FreeCam.Init()
 	UserInputService.InputBegan:Connect(function(io, gameProcessed)
+		if Input.IsControlled() then return end
 		if gameProcessed or io.UserInputType ~= Enum.UserInputType.Keyboard then
 			return
 		end

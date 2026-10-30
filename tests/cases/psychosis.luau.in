@@ -1,0 +1,16 @@
+do
+ local st={list={},psycho=0}
+ local CyberService={}
+ local function stOf() return st end
+ local function publish() end
+ local Cyberware={Load=function(list) local n=0;for _,v in list do n+=v end;return n end}
+ @ADMINPSYCHOSIS@
+ local admin=player(130,vec(0,0,0),true)
+ CyberService.AdminPsychosis(admin,true)
+ eq(st.psycho,0,"turning immunity off does not inject psychosis")
+ st.psycho=.65;CyberService.AdminPsychosis(admin,true)
+ eq(st.psycho,0,"no implants clears artificial old stress")
+ st.list={pump=1};st.psycho=.2;CyberService.AdminPsychosis(admin,true)
+ eq(st.psycho,.2,"immunity switch preserves real existing stress without increasing it")
+ CyberService.AdminPsychosis(admin,false);eq(st.psycho,0,"restoring immunity clears stress")
+end

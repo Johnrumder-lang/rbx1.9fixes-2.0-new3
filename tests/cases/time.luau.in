@@ -1,0 +1,7 @@
+local caster=player(1,vec(0,0,0));local near=player(2,vec(60,0,0));local far=player(3,vec(200,0,0));Players.list={caster,near,far}
+workspace:SetAttribute("SlowScale",.06);workspace:SetAttribute("SlowMo",1);workspace:SetAttribute("SlowMoUsers",",1,");workspace:SetAttribute("SlowFieldR",70)
+eq(TimeScale.For(1),1,"caster immunity");eq(TimeScale.For(2),.06,"near player slowed");eq(TimeScale.For(3),1,"distant player normal")
+eq(TimeScale.Get(),1,"global world stays normal");eq(TimeScale.ForField(nil,vec(70,0,0)),.06,"radius inclusive");eq(TimeScale.ForField(nil,vec(70.01,0,0)),1,"radius exit")
+workspace:SetAttribute("SlowMoUsers",",1,2,");eq(TimeScale.For(2),1,"two simultaneous casters")
+workspace:SetAttribute("SlowMoUsers",",1,");near.Character.children.Torso.Position=vec(80,0,0);eq(TimeScale.For(2),1,"moving out restores clock")
+workspace:SetAttribute("SlowScale",nil);eq(TimeScale.ForField(nil,vec(0,0,0)),1,"field ends")

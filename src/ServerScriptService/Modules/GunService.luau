@@ -202,7 +202,13 @@ local function resolve(player: Player?, gun: Model, origin: Vector3, dir: Vector
 		end
 		local body, region = DamageService.BodyOf(part)
 		if body and region then
+			local hpBefore = body:GetAttribute("HP_" .. region)
 			onBody(body, region, hit.Position, dir, keep)
+			-- A blocked/dodged shot never creates a penetration tunnel or exit blood.
+			if not pellet and hpBefore ~= nil and body:GetAttribute("HP_" .. region) == hpBefore then
+				kind = "shield"
+				break
+			end
 			-- does it come out the other side?
 			local bp = body:FindFirstChild(RigInfo.RegionPart[region] or "")
 			if left > 0 and through < Config.PenetrationMaxParts and bp and bp:IsA("BasePart") and not body:GetAttribute("Wonder") then
@@ -275,7 +281,8 @@ local function resolve(player: Player?, gun: Model, origin: Vector3, dir: Vector
 	}
 end
 
-function GunService.Fire(player: Player, gun: Model, originIn: any, shots: any)
+function GunService.Fire(player: Player, gun: Model, originIn: any, shots: any, controlledShot: boolean?)
+	if player.Character and player.Character:GetAttribute("ControlActive") and not controlledShot then return end
 	if player.Character and (player.Character:GetAttribute("TemporalFrozenUntil") or 0) > workspace:GetServerTimeNow() then return end
 	if not holdsGun(player, gun) then
 		return
@@ -393,7 +400,7 @@ function GunService.Fire(player: Player, gun: Model, originIn: any, shots: any)
 			local from = origin + dir * math.max(0, flown - 1)
 			table.insert(results, resolve(player, gun, from, dir, math.max(2, range - flown + 1), nil, shotgun, stats.push, onBody, char, Ballistics.Pen(kind)))
 		else
-			table.insert(results, resolve(player, gun, origin, dir, range, s, shotgun, stats.push, onBody, nil, Ballistics.Pen(kind)))
+			table.insert(results, resolve(player, gun, origin, dir, range, s, shotgun, stats.push, onBody, controlledShot and char or nil, Ballistics.Pen(kind)))
 		end
 	end
 	-- (v2.0) the M1 Garand throws its empty clip out with its famous "ping" after the last round
@@ -426,7 +433,7 @@ function GunService.Fire(player: Player, gun: Model, originIn: any, shots: any)
 		for _, r in results do
 			local hp = r.part
 			local owner = hp and hp:FindFirstAncestorOfClass("Model")
-			if hp and hp:IsA("BasePart") and hp.Parent and not (owner and owner:GetAttribute("Wonder") == true) then
+			if r.k ~= "shield" and hp and hp:IsA("BasePart") and hp.Parent and not (owner and owner:GetAttribute("Wonder") == true) then
 				GunService.StickBolt(hp, r.to, (r.to - origin).Unit) -- (v1.9.1: never into a Wonder player)
 			end
 		end
@@ -441,6 +448,7 @@ function GunService.Fire(player: Player, gun: Model, originIn: any, shots: any)
 		shotgun = shotgun,
 		kind = kind,
 		slow = flown ~= nil,
+		arm = controlledShot == true,
 	})
 	end
 	if GunService.OnShotLine then

@@ -833,26 +833,7 @@ Input.ArmAimHook = function(self, side: string, shoulder: Vector3, _heading: CFr
 	return nil, nil
 end
 
-local crashUntil = 0
-local origMove = Input.GetMoveVector
-Input.GetMoveVector = function(...)
-	if os.clock() < crashUntil then
-		local ct = CyberClient.crashTarget
-		local me = torsoOf(myChar())
-		local tt = torsoOf(ct)
-		if me and tt then
-			local d = tt.Position - me.Position
-			if Vector3.new(d.X, 0, d.Z).Magnitude > 4 then
-				return Vector3.new(0, 0, -1) -- (forward: the camera faces it)
-			end
-		end
-		return Vector3.zero
-	end
-	return origMove(...)
-end
-
 local function crashOut(dur: number)
-	crashUntil = os.clock() + dur
 	toast("CRASH OUT", RED)
 	SoundLibrary.Play("heartbeat", nil, 1)
 	local o = overlay
@@ -860,39 +841,8 @@ local function crashOut(dur: number)
 	o.BackgroundTransparency = 0.55
 	TweenService:Create(o, TweenInfo.new(dur, Enum.EasingStyle.Linear), { BackgroundTransparency = 1 }):Play()
 	Hallucinations.Force(dur + 4, 1)
-	task.spawn(function()
-		while os.clock() < crashUntil do
-			-- the nearest thing that moves
-			local me = torsoOf(myChar())
-			local best, bestD = nil, 90
-			if me then
-				for _, m in bodies() do
-					local t = torsoOf(m)
-					if t and m:GetAttribute("Dead") ~= true then
-						local d = (t.Position - me.Position).Magnitude
-						if d < bestD and (t.AssemblyLinearVelocity.Magnitude > 0.5 or d < 30) then
-							best, bestD = m, d
-						end
-					end
-				end
-			end
-			CyberClient.crashTarget = best
-			local tt = torsoOf(best)
-			if tt and me then
-				local yaw, pitch = yawPitchTo(tt.Position - (me.Position + Vector3.new(0, 1.5, 0)))
-				Cam.yaw, Cam.pitch = yaw, math.clamp(pitch, -1.2, 1.2)
-				-- shoot / punch it
-				if controller and controller.ready and not controller.dead then
-					Input.SetVirtual("Use", true)
-					task.wait(0.05)
-					Input.SetVirtual("Use", false)
-				end
-			end
-			task.wait(0.18)
-		end
-		CyberClient.crashTarget = nil
-		Input.SetVirtual("Use", false)
-	end)
+	-- ControlService supplies the single authoritative movement/aim directive.
+
 end
 
 -- cloaked bodies: nearly invisible for everyone else, see-through for yourself
@@ -2050,6 +2000,7 @@ function CyberClient.BuildPage(page: ScrollingFrame)
 		end
 	end
 	UserInputService.InputBegan:Connect(function(io)
+		if Input.IsControlled() then return end
 		if waiting and io.UserInputType == Enum.UserInputType.Keyboard then
 			local i = waiting
 			waiting = nil
@@ -2270,6 +2221,7 @@ function CyberClient.Init()
 
 	-- the keys of the bar
 	UserInputService.InputBegan:Connect(function(io, processed)
+		if Input.IsControlled() then return end
 		if processed or io.UserInputType ~= Enum.UserInputType.Keyboard then
 			return
 		end

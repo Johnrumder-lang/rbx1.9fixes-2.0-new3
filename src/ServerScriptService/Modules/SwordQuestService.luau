@@ -114,6 +114,7 @@ end
 local function publish(p: Player)
 	local st = stOf(p)
 	p:SetAttribute("SwordStage", st.stage)
+	p:SetAttribute("StillwaterUnlocked", st.stage >= 4 or nil)
 	p:SetAttribute("SwordProg", st.prog)
 	p:SetAttribute("SwordGoal", st.stage == 1 and Config.SwordQ1Kills or 0)
 	p:SetAttribute("HasStillCut", st.stage >= 4 or nil)

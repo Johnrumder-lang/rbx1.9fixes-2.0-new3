@@ -4386,6 +4386,16 @@ end
 
 -- a CHIP: a flat shard with gold contacts and a glowing core. Its colour / name is set by whoever makes it
 -- (ChipService / CameraService). A blank one is grey.
+function PropBuilders.package(cf: CFrame): Model
+	local m = Instance.new("Model"); m.Name = "Delivery Package"
+	local box = part(m, "Package", Vector3.new(1.8, 1.4, 1.4), cf, Color3.fromRGB(108, 91, 66), Enum.Material.SmoothPlastic)
+	part(m, "Seal", Vector3.new(0.3, 0.02, 1.42), cf * CFrame.new(0, 0.71, 0), Color3.fromRGB(200, 193, 171), Enum.Material.SmoothPlastic)
+	part(m, "Label", Vector3.new(0.6, 0.02, 0.6), cf * CFrame.new(0.5, 0.72, 0), Color3.fromRGB(225, 225, 220), Enum.Material.SmoothPlastic)
+	gripAttachment(box, cf); m.PrimaryPart = box; weldAll(m, box); setDensity(m, 0.4, 0.6, 0.05)
+	m:SetAttribute("Item", "package")
+	return m
+end
+
 function PropBuilders.chip(cf: CFrame): Model
 	local m = Instance.new("Model")
 	m.Name = "Chip"

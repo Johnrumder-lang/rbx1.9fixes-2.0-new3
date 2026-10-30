@@ -1021,6 +1021,7 @@ function SwordClient.Init()
 		end
 	end)
 	UserInputService.InputBegan:Connect(function(io)
+		if Input.IsControlled() then return end
 		if card and io.KeyCode == Enum.KeyCode.Escape then
 			closeCard()
 		end

@@ -169,6 +169,7 @@ end
 
 -- the map round the kill, copied from this machine's own world
 local function buildEnv(vp: ViewportFrame, center: Vector3, my: number)
+	require(script.Parent.ReplayGround).Copy(vp, center, ENV_RADIUS)
 	local map = workspace:FindFirstChild("Map")
 	if not map then
 		return

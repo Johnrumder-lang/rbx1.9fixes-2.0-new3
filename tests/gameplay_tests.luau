@@ -5,10 +5,13 @@ local realType=typeof
 local function typeof(v) return type(v)=="table" and v.__type or realType(v) end
 local vm={}
 local function vec(x,y,z) return setmetatable({X=x,Y=y,Z=z,__type="Vector3"},vm) end
+vm.__unm=function(a) return vec(-a.X,-a.Y,-a.Z) end
 vm.__sub=function(a,b) return vec(a.X-b.X,a.Y-b.Y,a.Z-b.Z) end
 vm.__add=function(a,b) return vec(a.X+b.X,a.Y+b.Y,a.Z+b.Z) end
 vm.__mul=function(a,b) if type(a)=="number" then a,b=b,a end;return vec(a.X*b,a.Y*b,a.Z*b) end
-vm.__index=function(a,k) if k=="Magnitude" then return math.sqrt(a.X*a.X+a.Y*a.Y+a.Z*a.Z) end;if k=="Unit" then return a*(1/a.Magnitude) end end
+vm.__index=function(a,k) if k=="Cross" then return function(a,b) return vec(a.Y*b.Z-a.Z*b.Y,a.Z*b.X-a.X*b.Z,a.X*b.Y-a.Y*b.X) end end;if k=="Magnitude" then return math.sqrt(a.X*a.X+a.Y*a.Y+a.Z*a.Z) end;if k=="Unit" then return a*(1/a.Magnitude) end end
+local RaycastParams={new=function() return {} end}
+local Enum={RaycastFilterType={Exclude=1,Include=2}}
 local Vector3={new=vec,zero=vec(0,0,0),yAxis=vec(0,1,0),one=vec(1,1,1)}
 local Color3={fromRGB=function(r,g,b) return {R=r/255,G=g/255,B=b/255} end,new=function(r,g,b) return {R=r,G=g,B=b} end}
 local function event() return {Connect=function(self,fn) self.callback=fn;return {Disconnect=function() end} end} end
@@ -34,7 +37,7 @@ function Players:GetPlayerByUserId(id) for _,p in self.list do if p.UserId==id t
 function Players:GetPlayerFromCharacter(c) for _,p in self.list do if p.Character==c then return p end end end
 local function player(id,pos,admin)
  local p=object("Player");p.UserId=id;p.DisplayName="P"..id;p.admin=admin;p.CharacterAdded=event();p.Character=object("Model")
- local torso=object("BasePart");torso.Position=pos;p.Character.children.Torso=torso;return p
+ local torso=object("BasePart");torso.Position=pos;torso.Parent=p.Character;p.Character.children.Torso=torso;return p
 end
 local task={spawn=function() end,delay=function() end,wait=function() end}
 local Random={new=function() return {NextNumber=function(_,a,b) return a or .5 end,NextInteger=function(_,a) return a end} end}
@@ -88,7 +91,7 @@ Chips.List = {
 		desc = {
 			"The next bullet that would hit you is dodged. 20 s between charges.",
 			"The next 2 bullets are dodged.",
-			"The next 3 bullets are dodged - and the dodge nudges you aside.",
+			"The next 3 bullets trigger a sidestep into a clear lane.",
 		},
 		info = "Reads the shot before it lands and steps your body out of the line. It works on its own.",
 		ability = "DODGE", cooldown = { 20, 20, 20 }, color = { 90, 220, 255 },
@@ -240,7 +243,7 @@ Chips.Payloads = {
 	{ id = "explode", name = "DETONATE", info = "They blow up." },
 	{ id = "hallucinate", name = "HALLUCINATE", info = "They start seeing things that are not there." },
 	{ id = "rampage", name = "RAMPAGE", info = "They crash out and attack whoever is near." },
-	{ id = "killtarget", name = "KILL A TARGET", info = "They go after one person you choose until one of them is down." },
+	{ id = "killtarget", name = "KILL A TARGET", info = "Choose a target when inserting. After 15 s, the carrier is controlled until the target dies." },
 }
 Chips.PayloadById = {} :: { [string]: { id: string, name: string, info: string } }
 for _, p in Chips.Payloads do
@@ -1194,7 +1197,7 @@ function ChipService.Take(p: Player, uid: number)
 	changed(p)
 	-- put it in the hand
 	if item.PrimaryPart then
-		pcall(deps.OwnershipService.Grab, p, item.PrimaryPart, "Right")
+		pcall(deps.OwnershipService.Equip, p, item, "Right")
 	end
 end
 
@@ -1254,8 +1257,8 @@ local function cashOf(p: Player): number
 	return typeof(c) == "number" and c or 0
 end
 
-local function pay(p: Player, n: number, why: string): boolean
-	if n <= 0 or Items.IsOwner(p) then
+local function pay(p: Player, n: number, why: string, chargeAdmin: boolean?): boolean
+	if n <= 0 or (Items.IsOwner(p) and not chargeAdmin) then
 		return true
 	end
 	if cashOf(p) < n then
@@ -1327,7 +1330,7 @@ function ChipService.Program(p: Player, uid: any, payload: any, tier: any, targe
 		return
 	end
 	tier = math.clamp(typeof(tier) == "number" and math.floor(tier) or 1, 1, 3)
-	if not pay(p, Config.VirusPrice, "virus") then
+	if not pay(p, Config.VirusPrice, "virus", true) then
 		say(p, string.format("A VIRUS IS $%d.", Config.VirusPrice))
 		return
 	end
@@ -1448,6 +1451,7 @@ function ChipService.Hit(victim: Model, effect: string, tier: number, attacker: 
 		if effect == "killtarget" then
 			targetUserId = attacker and attacker.UserId or nil -- (set by the caller via opts normally)
 		end
+		if vp then require(script.Parent.ControlService).Start(vp, nil, dur) end
 		fxTo(vp, "rampage", dur, targetUserId)
 		if not vp then
 			-- an NPC / bot: turn it hostile where it stands (best-effort)
@@ -1629,17 +1633,12 @@ function ChipService.PlayHeld(p: Player, item: Model)
 	if not chip then
 		return
 	end
-	if not chip.clip then
-		say(p, "THIS CHIP HAS NO VIDEO.")
-		return
-	end
-	if ChipService.Camera then
-		ChipService.Camera.Play(p, chip.clip, chip.trojan and chip or nil, p)
-	end
+	returnChipToBag(p, item, chip)
+	Remote:FireClient(p, "opendeck")
 end
 
 -- grab somebody + F with a chip in the other hand: push it into them
-function ChipService.InsertHeld(p: Player, item: Model)
+function ChipService.InsertHeld(p: Player, item: Model, targetId: number?)
 	if deps.OwnershipService.ItemHolder(item) ~= p then
 		return
 	end
@@ -1652,6 +1651,13 @@ function ChipService.InsertHeld(p: Player, item: Model)
 	if not victim or not vp then
 		say(p, "GRAB SOMEBODY FIRST (Q / E).")
 		return
+	end
+	if victim:GetAttribute("Dead") or not alive(p) then return end
+	if chip.payload == "killtarget" then
+		if targetId == nil then Remote:FireClient(p, "picktarget", item, vp.UserId); return end
+		local target = typeof(targetId) == "number" and Players:GetPlayerByUserId(targetId)
+		if not target or target == vp or not alive(target) then say(p, "CHOOSE A LIVING TARGET OTHER THAN THE CARRIER."); return end
+		chip.target = targetId
 	end
 	-- the chip is used up going in
 	if item.Parent then
@@ -1672,29 +1678,24 @@ end
 
 -- a virus payload fires on a victim (from a direct insert, or a trojan video ending)
 function ChipService.FirePayload(victim: Model, chip: Chip, attacker: Player?)
-	local payload = chip.payload
-	if not payload then
-		return
-	end
-	local effect = payload
-	if payload == "rampage" then
-		effect = "psycho"
-	end
-	local landed
-	if payload == "killtarget" then
-		-- they go after the attacker (or the stored target)
+	if not chip.payload or not victim or victim:GetAttribute("Dead") then return end
+	local payload = table.clone(chip)
+	if attacker then say(attacker, "VIRUS ARMED — ACTIVATES IN 15 SECONDS.") end
+	task.delay(15, function()
+		if not victim.Parent or victim:GetAttribute("Dead") then return end
 		local vp = Players:GetPlayerFromCharacter(victim)
-		local target = chip.target or (attacker and attacker.UserId) or nil
-		if vp and firewallOf(vp) < chip.tier then
-			Remote:FireClient(vp, "rampage", 14, target)
-			landed = true
+		if vp and vp.Character ~= victim then return end
+		local landed = false
+		if payload.payload == "killtarget" then
+			if vp and typeof(payload.target) == "number" and not deps.DamageService.Protected(victim, attacker) and firewallOf(vp) < payload.tier then
+				landed = require(script.Parent.ControlService).Start(vp, payload.target, nil)
+				if landed then fxTo(vp, "rampage", 5, payload.target) end
+			else fxTo(vp, "blocked") end
+		else
+			landed = ChipService.Hit(victim, payload.payload == "rampage" and "psycho" or payload.payload, payload.tier, attacker, true)
 		end
-	else
-		landed = ChipService.Hit(victim, effect, chip.tier, attacker, true)
-	end
-	if landed and attacker then
-		say(attacker, "PAYLOAD DELIVERED.")
-	end
+		if landed and attacker and attacker.Parent then say(attacker, "PAYLOAD ACTIVE.") end
+	end)
 end
 
 ------------------------------------------------------------------------
@@ -1725,29 +1726,36 @@ local function tryDodge(model: Model, point: Vector3, dir: Vector3): boolean
 	end
 	local st = states[p]
 	local t = dodgeTier(p)
+	if (model:GetAttribute("DodgeUntil") or 0) > workspace:GetServerTimeNow() then return true end
 	if not st or t <= 0 or st.dodgeLeft <= 0 then
 		return false
 	end
+	if (model:GetAttribute("DodgeUntil") or 0) > workspace:GetServerTimeNow() then return true end
+	local torso = model:FindFirstChild("Torso")
+	if not torso or (model:GetAttribute("TemporalFrozenUntil") or 0) > workspace:GetServerTimeNow() then return false end
+	local side = dir:Cross(Vector3.yAxis)
+	if side.Magnitude < 0.1 then side = torso.CFrame.RightVector end
+	side = side.Unit * (rng:NextNumber() < 0.5 and 1 or -1)
+	local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Exclude
+	local ignore = { model }
+	for _, held in deps.OwnershipService.HeldItems(p) do table.insert(ignore, held) end
+	local fx = workspace:FindFirstChild("FX"); if fx then table.insert(ignore, fx) end
+	rp.FilterDescendantsInstances = ignore; rp.RespectCanCollide = true
+	local displacement
+	for _, distance in { 3.8, -3.8, 2.6, -2.6 } do
+		local delta = side * distance
+		local wall = workspace:Blockcast(torso.CFrame, Vector3.new(2.4, 4.8, 2), delta, rp)
+		local floor = workspace:Raycast(torso.Position + delta, Vector3.new(0, -7, 0), rp)
+		if not wall and floor and floor.Normal.Y > 0.6 then displacement = delta; break end
+	end
+	if not displacement then return false end -- no free lane: the incoming shot can hit
 	st.dodgeLeft -= 1
-	if st.dodgeLeft <= 0 then
-		st.dodgeRefill = os.clock() + 20
-	end
+	if st.dodgeLeft <= 0 then st.dodgeRefill = os.clock() + 20 end
 	p:SetAttribute("ChipDodge", st.dodgeLeft > 0 and st.dodgeLeft or nil)
-	Remote:FireClient(p, "dodge")
-	-- tier 3 also nudges the body aside
-	if t >= 3 then
-		local torso = model:FindFirstChild("Torso")
-		if torso and torso:IsA("BasePart") then
-			local side = dir:Cross(Vector3.yAxis)
-			if side.Magnitude > 0.1 then
-				side = side.Unit * (rng:NextNumber() < 0.5 and 1 or -1)
-				pcall(function()
-					torso:ApplyImpulse(side * 22 * torso.AssemblyMass)
-				end)
-			end
-		end
-	end
-	local _ = point
+	model:SetAttribute("DodgeUntil", workspace:GetServerTimeNow() + 0.16)
+	local destination = model:GetPivot() + displacement
+	model:PivotTo(destination)
+	Remote:FireClient(p, "dodge", destination)
 	return true
 end
 
@@ -1777,6 +1785,7 @@ function ChipService.Init(d: any)
 	local requests = {}
 	Remote.OnServerEvent:Connect(function(p, action, a, b, c, dd)
 		if typeof(action) ~= "string" then return end
+		if p.Character and p.Character:GetAttribute("ControlActive") then return end
 		local t = os.clock()
 		local r = requests[p]
 		if not r or t - r.t > 1 then r = { t = t, n = 0 }; requests[p] = r end
@@ -1806,8 +1815,13 @@ function ChipService.Init(d: any)
 			end
 		elseif action == "insert" then
 			if typeof(a) == "Instance" and a:IsA("Model") then
-				ChipService.InsertHeld(p, a)
+				ChipService.InsertHeld(p, a, b)
 			end
+		elseif action == "helduse" and typeof(a) == "Instance" and a:IsA("Model") then
+			if deps.OwnershipService.HeldBody(p) then ChipService.InsertHeld(p, a) else ChipService.PlayHeld(p, a) end
+		elseif action == "playbag" then
+			local _, chip = findBag(stOf(p), a)
+			if chip and chip.clip and ChipService.Camera then ChipService.Camera.Play(p, chip.clip, chip.trojan and chip or nil, p) end
 		elseif action == "buy" then
 			ChipService.Buy(p, a, b)
 		elseif action == "sell" then
@@ -1853,6 +1867,7 @@ function ChipService.Init(d: any)
 		stOf(p)
 	end
 	Players.PlayerRemoving:Connect(function(p)
+		requests[p] = nil
 		states[p] = nil
 		cd[p] = nil
 	end)
@@ -1892,6 +1907,7 @@ function ChipService.Reset(p: Player)
 end
 
 ChipService._states=states
+ChipService._dodge=tryDodge
 ChipService._public=publicAttrs
 ChipService._setup=function(d,r) deps=d;Remote=r end
 return ChipService
@@ -1931,6 +1947,8 @@ local Persist = {}
 
 export type Profile = {
 	jobsCompleted: number,
+	jobActive: boolean,
+	jobFailedUntil: number,
 	cash: number,
 	owned: { [string]: boolean },
 	equipped: { [string]: string },
@@ -1980,7 +1998,7 @@ local function encode(prof: Profile): any
 			table.insert(chips, { id = rec.id, tier = rec.tier, slot = rec.slot, payload = rec.payload, target = rec.target })
 		end
 	end
-	return { v = 1, jobs = prof.jobsCompleted or 0, cash = math.floor(prof.cash), owned = owned, eq = eq, lu = prof.ledgerUnlocked, la = prof.ledgerApples, cy = cy, lk = lk,
+	return { v = 1, jobActive = prof.jobActive == true, jobFailedUntil = prof.jobFailedUntil or 0, jobs = prof.jobsCompleted or 0, cash = math.floor(prof.cash), owned = owned, eq = eq, lu = prof.ledgerUnlocked, la = prof.ledgerApples, cy = cy, lk = lk,
 		sw = prof.sword, sp = prof.swordProg, ch = chips, codes = table.clone(prof.codes or {}) }
 end
 
@@ -2123,7 +2141,7 @@ end
 
 local function load(p: Player)
 	local prof: Profile = {
-		jobsCompleted = 0, cash = 0, owned = {}, equipped = {}, ledgerUnlocked = false, ledgerApples = 0, cyber = {}, look = {}, sword = 0, swordProg = 0,
+		jobsCompleted = 0, jobActive = false, jobFailedUntil = 0, cash = 0, owned = {}, equipped = {}, ledgerUnlocked = false, ledgerApples = 0, cyber = {}, look = {}, sword = 0, swordProg = 0,
 		chips = {}, codes = {},
 		loaded = false, canSave = false, dirty = false,
 	}
@@ -2136,6 +2154,8 @@ local function load(p: Player)
 			if ok then
 				if typeof(data) == "table" then
 					prof.jobsCompleted = typeof(data.jobs) == "number" and math.clamp(math.floor(data.jobs), 0, 1000000) or 0
+					prof.jobActive = data.jobActive == true
+					prof.jobFailedUntil = typeof(data.jobFailedUntil) == "number" and math.clamp(data.jobFailedUntil, 0, os.time() + 180) or 0
 					prof.codes = typeof(data.codes) == "table" and data.codes or {}
 					prof.cash = typeof(data.cash) == "number" and math.max(0, data.cash) or 0
 					for _, id in data.owned or {} do
@@ -2257,206 +2277,6 @@ Persist._setup=function(p,prof,st) profiles[p]=prof;store=st end
 return Persist
 
 end)()
-local Epoch=(function()
---!nonstrict
--- Global progress reset: rotate a namespace, including profiles belonging to offline players.
--- Old servers keep their old namespace, so a late autosave cannot resurrect erased progress.
-local DSS = game:GetService("DataStoreService")
-local Players = game:GetService("Players")
-local Messaging = game:GetService("MessagingService")
-local RunService = game:GetService("RunService")
-local Epoch = { Ready = false, Value = 0 }
-local store, initialized, closing, wiping = nil, false, false, false
-local TOPIC = "RagdollProgressEpoch_v1"
-local function closeForReset()
-	if closing then return end
-	closing = true
-	workspace:SetAttribute("ProgressResetPending", true)
-	for _, p in Players:GetPlayers() do p:Kick("The game owner reset all progress. Rejoin to start a new save.") end
-end
-function Epoch.Init()
-	if initialized then return end
-	initialized = true
-	store = DSS:GetDataStore("RagdollProgressControl_v1")
-	for attempt = 1, 3 do
-		local ok, v = pcall(function() return store:GetAsync("epoch") end)
-		if ok then Epoch.Value = typeof(v) == "number" and math.max(0, math.floor(v)) or 0; Epoch.Ready = true; break end
-		if RunService:IsStudio() then break end
-		task.wait(attempt)
-	end
-	if not Epoch.Ready then
-		warn("[Ragdoll] Progress namespace unavailable; persistence disabled for this session to protect saves.")
-		return
-	end
-	pcall(function()
-		Messaging:SubscribeAsync(TOPIC, function(message)
-			if typeof(message.Data) == "number" and message.Data > Epoch.Value then closeForReset() end
-		end)
-	end)
-	Players.PlayerAdded:Connect(function(p) if closing then p:Kick("Progress reset in progress. Please rejoin.") end end)
-	task.spawn(function()
-		while not closing do
-			task.wait(30)
-			local ok, v = pcall(function() return store:GetAsync("epoch") end)
-			if ok and typeof(v) == "number" and v > Epoch.Value then closeForReset() end
-		end
-	end)
-end
-function Epoch.Key(userId: number, prefix: string?): string
-	local key = (prefix or "p_") .. userId
-	return Epoch.Value == 0 and key or ("e" .. Epoch.Value .. "_" .. key)
-end
-function Epoch.Store(name: string)
-	if not Epoch.Ready then error("Progress namespace not ready") end
-	return DSS:GetDataStore(name)
-end
-function Epoch.Wipe(by: Player): (boolean, string)
-	local Items = require(game.ReplicatedStorage.Shared.Items)
-	if not Items.IsGameOwner(by) then return false, "Only the game owner can reset all progress." end
-	if wiping or closing or not Epoch.Ready then return false, "Progress storage is unavailable or a reset is already running." end
-	wiping = true
-	local ok, value = pcall(function()
-		return store:UpdateAsync("epoch", function(old) return math.max(tonumber(old) or 0, Epoch.Value) + 1 end)
-	end)
-	wiping = false
-	if not ok then return false, "The reset failed. No progress was reset. Try again later." end
-	-- Deliberately leave Epoch.Value unchanged here; in-flight writes belong to the old epoch.
-	pcall(function() Messaging:PublishAsync(TOPIC, value) end)
-	closeForReset()
-	return true, "All player progress reset."
-end
-return Epoch
-
-end)()
-local Jobs=(function()
---!nonstrict
--- Paid fictional contracts. Targets, completion and payouts are all decided by the server.
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local Persist = modules.children.Persist
-local JobService = {}
-local definitions = {
-	assassination = { name = "ASSASSINATION", description = "Track and eliminate a marked rogue mercenary.", reward = 450, goal = 1, duration = 300 },
-	courier = { name = "NEURAL COURIER", description = "Collect a data package at the ripperdoc and deliver it to the hospital.", reward = 250, goal = 2, duration = 240 },
-	cleanup = { name = "STREET CLEANUP", description = "Eliminate three hostile NPCs. Training dummies do not count.", reward = 300, goal = 3, duration = 300 },
-}
-local active, cooldown, requests = {}, {}, {}
-local deps, remote
-local function root(p)
-	local ch = p.Character
-	return ch and not ch:GetAttribute("Dead") and ch:FindFirstChild("Torso") or nil
-end
-local function send(p, message)
-	local job = active[p]
-	local d = job and definitions[job.id]
-	remote:FireClient(p, "state", job and {
-		id = job.id, name = d.name, reward = d.reward, goal = d.goal, progress = job.progress,
-		deadline = job.deadline, target = job.target, point = job.point,
-		objective = job.id == "courier" and (job.progress == 0 and "COLLECT AT RIPPERDOC" or "DELIVER TO HOSPITAL") or d.description,
-	} or false, message, cooldown[p] or 0)
-end
-local function clear(p)
-	local job = active[p]
-	active[p] = nil
-	if job and job.target and job.target.Parent then job.target:Destroy() end
-end
-local function finish(p)
-	local job = active[p]
-	if not job then return end
-	local d = definitions[job.id]
-	active[p] = nil -- Claim before paying; repeated kill callbacks cannot pay twice.
-	if job.target and job.target.Parent then task.delay(4, function() if job.target.Parent then job.target:Destroy() end end) end
-	cooldown[p] = workspace:GetServerTimeNow() + 45
-	deps.SkinService.AddCash(p, d.reward, "contract: " .. d.name)
-	local prof = Persist.Get(p)
-	if prof then prof.jobsCompleted = (prof.jobsCompleted or 0) + 1; Persist.Dirty(p) end
-	send(p, "CONTRACT COMPLETE  +$" .. d.reward)
-end
-local function accept(p, id)
-	local d, torso = definitions[id], root(p)
-	local prof = Persist.Get(p)
-	if not d or not torso or not prof or not prof.loaded or active[p] then return end
-	if workspace:GetServerTimeNow() < (cooldown[p] or 0) then send(p, "New contracts are cooling down."); return end
-	local mode = workspace:GetAttribute("Mode")
-	if mode and mode ~= "sandbox" and mode ~= "" then send(p, "Contracts are available in sandbox mode."); return end
-	local job = { id = id, progress = 0, deadline = workspace:GetServerTimeNow() + d.duration, character = p.Character }
-	if id == "assassination" then
-		local rp = RaycastParams.new()
-		rp.FilterType = Enum.RaycastFilterType.Include
-		local map = workspace:FindFirstChild("Map")
-		rp.FilterDescendantsInstances = map and { map } or { workspace.Terrain }
-		local at
-		for n = 1, 16 do
-			local angle = n * math.pi / 8
-			local pos = torso.Position + Vector3.new(math.cos(angle) * 65, 18, math.sin(angle) * 65)
-			local hit = workspace:Raycast(pos, Vector3.new(0, -55, 0), rp)
-			if hit and hit.Normal.Y > 0.85 and math.abs(hit.Position.Y - torso.Position.Y) < 12 then at = hit.Position + Vector3.new(0, 3.5, 0); break end
-		end
-		if not at then send(p, "Move into the city to locate a contract target."); return end
-		job.target = deps.NPCService.Spawn("cyber", CFrame.new(at), p, { name = "Rogue Netrunner", weapon = "smg" })
-		if not job.target then send(p, "Target unavailable. Try again."); return end
-		job.target:SetAttribute("ContractOwner", p.UserId)
-	elseif id == "courier" then
-		local map = workspace:FindFirstChild("Map")
-		local desk = map and map:FindFirstChild("RipperFrontDesk", true)
-		local hospital = map and map:FindFirstChild("ReplayChair", true)
-		if not desk or not hospital then send(p, "Load the city map for courier work."); return end
-		job.point, job.destination = desk.Position, hospital.Position
-	end
-	active[p] = job
-	send(p, "CONTRACT ACCEPTED")
-end
-function JobService.Init(d)
-	deps = d
-	remote = Instance.new("RemoteEvent")
-	remote.Name, remote.Parent = "Jobs", ReplicatedStorage.Remotes
-	remote.OnServerEvent:Connect(function(p, action, id)
-		if typeof(action) ~= "string" then return end
-		local now = os.clock()
-		if now - (requests[p] or 0) < 0.3 then return end
-		requests[p] = now
-		if action == "list" then remote:FireClient(p, "catalog", definitions); send(p)
-		elseif action == "accept" and typeof(id) == "string" then accept(p, id)
-		elseif action == "cancel" then clear(p); cooldown[p] = workspace:GetServerTimeNow() + 15; send(p, "Contract cancelled.") end
-	end)
-	local prior = deps.DamageService.OnKill
-	deps.DamageService.OnKill = function(victim, killer, state)
-		if prior then prior(victim, killer, state) end
-		if not killer then return end
-		local job = active[killer]
-		if not job or not root(killer) then return end
-		if (job.id == "assassination" and victim == job.target) or (job.id == "cleanup" and victim:GetAttribute("IsNPC") and not victim:GetAttribute("IsDummy") and not victim:GetAttribute("StandUp") and victim:GetAttribute("Hostile") == true and victim:GetAttribute("Spawner") == nil and not victim:GetAttribute("ContractOwner")) then
-			job.progress += 1
-			if job.progress >= definitions[job.id].goal then finish(killer) else send(killer, "TARGET ELIMINATED") end
-		end
-	end
-	Players.PlayerRemoving:Connect(function(p) clear(p); cooldown[p], requests[p] = nil, nil end)
-	task.spawn(function()
-		while true do
-			task.wait(0.5)
-			for p, job in active do
-				local torso = root(p)
-				if not torso or p.Character ~= job.character or workspace:GetServerTimeNow() >= job.deadline then
-					clear(p); cooldown[p] = workspace:GetServerTimeNow() + 15; send(p, "CONTRACT FAILED")
-				elseif job.target and (not job.target.Parent or job.target:GetAttribute("Dead")) then
-					clear(p); send(p, "The marked target was lost. Choose another contract.")
-				elseif job.id == "courier" and job.point and (torso.Position - job.point).Magnitude <= 9 then
-					job.progress += 1
-					if job.progress >= 2 then finish(p)
-					else job.point = job.destination; send(p, "PACKAGE COLLECTED — DELIVER TO HOSPITAL") end
-				end
-			end
-		end
-	end)
-end
-JobService._active=active
-JobService._accept=accept
-JobService._finish=finish
-JobService._setup=function(d,r) deps=d;remote=r end
-return JobService
-
-end)()
 -- Full profile code with mock DataStore callbacks, including retries and failures.
 local function profile() return {cash=10,owned={},equipped={},ledgerUnlocked=false,ledgerApples=0,cyber={},look={},sword=0,swordProg=0,chips={},codes={},loaded=true,canSave=true,dirty=false} end
 local persisted
@@ -2470,16 +2290,6 @@ local other=profile();Persist._setup(payer,other,store)
 check(not Persist.ClaimCode(payer,"netrunner",200,{"pistol_2"}),"other session receipt rejected");eq(other.cash,10,"other session not paid")
 local failed=profile();Persist._setup(payer,failed,{UpdateAsync=function() error("service unavailable") end})
 check(not Persist.ClaimCode(payer,"chips",499,{"skin_2","skin_3"}),"failed storage rejects claim");eq(failed.cash,10,"failed claim leaves money untouched");check(not failed.codes.chips,"failed claim remains redeemable")
-Epoch.Value=0;eq(Epoch.Key(42),"p_42","legacy profile key");eq(Epoch.Key(42,"u_"),"u_42","legacy kill key");eq(Epoch.Key(42,"q_"),"q_42","legacy quest key")
-Epoch.Value=3;eq(Epoch.Key(42),"e3_p_42","wipe rotates offline profiles");eq(Epoch.Key(42,"q_"),"e3_q_42","wipe rotates quest saves")
-local paid=0;modules.children.Persist.Get=function() return profile() end;modules.children.Persist.Dirty=function() end
-Jobs._setup({SkinService={AddCash=function(_,amount) paid+=amount end}}, {FireClient=function() end})
-local worker=player(50,vec(0,0,0))
-Jobs._accept(worker,"cleanup");check(Jobs._active[worker]~=nil,"mission accepted")
-Jobs._finish(worker);eq(paid,300,"contract pays reward");Jobs._finish(worker);eq(paid,300,"contract cannot pay twice")
-Jobs._accept(worker,"cleanup");check(Jobs._active[worker]==nil,"repeat contract observes cooldown")
-print("PASS: "..total.." total gameplay and transaction assertions")
-
 shared.children.TimeScale=TimeScale
 shared.children.HotdogPath={}
 local bodies={}
@@ -3214,7 +3024,6 @@ end
 return SuperService
 
 end)()
-
 local clock=1000
 workspace.GetServerTimeNow=function() return clock end
 local source=player(60,vec(0,0,0));local closeP=player(61,vec(5,0,0));local distant=player(62,vec(80,0,0));Players.list={source,closeP,distant}
@@ -3234,3 +3043,1081 @@ clock=1006;frozenTasks[1]()
 check(not closeP.Character.children.Torso.Anchored,"freeze restored anchoring")
 eq(closeP.Character.children.Torso.AssemblyLinearVelocity.X,2,"freeze restored velocity")
 print("PASS: "..total.." regression assertions including overlapping local freeze")
+do
+ local meta, calls, publishes, delays = {},0,{},{}
+ local store={GetAsync=function(_,k) return meta[k] end,UpdateAsync=function(_,k,fn) meta[k]=fn(meta[k]);return meta[k] end}
+ local studio=true
+ local services={DataStoreService={GetDataStore=function() calls+=1;return store end},Players=Players,RunService={IsStudio=function() return studio end},MessagingService={PublishAsync=function(_,topic,d) table.insert(publishes,d) end,SubscribeAsync=function() end}}
+ local game={GameId=0,ReplicatedStorage={Shared={Items={IsGameOwner=function(p) return p.admin end,IsOwner=function(p) return p.admin end}}},GetService=function(_,n) return services[n] end}
+ local task={wait=function() end,spawn=function() end,delay=function(_,fn) table.insert(delays,fn) end}
+ local warn=function() end
+ local function loadEpoch()
+ --!nonstrict
+-- Global and per-account save generations. A live server never changes a loaded generation:
+-- late saves stay in the old namespace, and affected players reconnect before loading a new one.
+local DSS = game:GetService("DataStoreService")
+local Players = game:GetService("Players")
+local Messaging = game:GetService("MessagingService")
+local RunService = game:GetService("RunService")
+local Epoch = { Ready = false, Value = 0, SessionOnly = false }
+local store, initialized, closing, wiping = nil, false, false, false
+local generations, loading, resetUsers, exploding = {}, {}, {}, {}
+local TOPIC = "RagdollProgressEpoch_v1"
+local function removePlayer(p)
+	if exploding[p] then return end
+	exploding[p] = true
+	local ch = p.Character
+	local head = ch and ch:FindFirstChild("Head")
+	if ch and head then
+		local ok, err = pcall(function()
+			local Gore = require(script.Parent.GoreService)
+			local Damage = require(script.Parent.DamageService)
+			ch:SetAttribute("NoRegrowth", true); ch:SetAttribute("ForceKill", true)
+			Gore.Gibs(head.Position, 9, 28)
+			Gore.Burst(head.Position, Vector3.yAxis, 32, 22)
+			Gore.Sound("gore", head.Position, 1)
+			head.Transparency = 1
+			for _, face in head:GetChildren() do if face:IsA("Decal") then face.Transparency = 1 end end
+			Damage.Kill(ch, "Progress reset by an admin", true)
+		end)
+		if not ok then warn("[Progress reset effect]", err) end
+	end
+	task.delay(2, function() if p.Parent then p:Kick("Your progress was reset. Rejoin a fresh server to start a new save.") end end)
+end
+local function closeForReset(userId)
+	if userId then
+		resetUsers[userId] = true
+		local p = Players:GetPlayerByUserId(userId)
+		if p then removePlayer(p) end
+	else
+		if closing then return end
+		closing = true
+		workspace:SetAttribute("ProgressResetPending", true)
+		for _, p in Players:GetPlayers() do removePlayer(p) end
+	end
+end
+local function receive(data)
+	if typeof(data) == "number" and data > Epoch.Value then closeForReset()
+	elseif typeof(data) == "table" and typeof(data.userId) == "number" and typeof(data.generation) == "number" then
+		local loaded = generations[data.userId]
+		if loaded ~= nil and data.generation > loaded then closeForReset(data.userId) end
+	end
+end
+function Epoch.Init()
+	if initialized then return end
+	initialized = true
+	-- GetDataStore itself throws for unpublished places; it must be inside the protected call.
+	if game.GameId == 0 and RunService:IsStudio() then
+		Epoch.SessionOnly, Epoch.Ready = true, true
+		return
+	end
+	local acquired, result = pcall(function() return DSS:GetDataStore("RagdollProgressControl_v1") end)
+	if acquired then store = result end
+	if store then
+		for attempt = 1, 3 do
+			local ok, v = pcall(function() return store:GetAsync("epoch") end)
+			if ok then Epoch.Value = typeof(v) == "number" and math.max(0, math.floor(v)) or 0; Epoch.Ready = true; break end
+			if RunService:IsStudio() then break end
+			task.wait(attempt)
+		end
+	end
+	if not Epoch.Ready then
+		if RunService:IsStudio() then Epoch.SessionOnly, Epoch.Ready = true, true; return end
+		warn("[Ragdoll] Progress storage unavailable; persistence is disabled for this session.")
+		return
+	end
+	pcall(function() Messaging:SubscribeAsync(TOPIC, function(m) receive(m.Data) end) end)
+	Players.PlayerAdded:Connect(function(p)
+		if closing or resetUsers[p.UserId] then p:Kick("Progress reset in progress. Join a fresh server.") end
+	end)
+	task.spawn(function()
+		while not closing do
+			task.wait(30)
+			local ok, v = pcall(function() return store:GetAsync("epoch") end)
+			if ok then receive(v) end
+			for _, p in Players:GetPlayers() do
+				if generations[p.UserId] ~= nil then
+					local got, n = pcall(function() return store:GetAsync("u_" .. p.UserId) end)
+					if got then receive({ userId = p.UserId, generation = tonumber(n) or 0 }) end
+				end
+			end
+		end
+	end)
+end
+function Epoch.Key(userId: number, prefix: string?): string
+	if not Epoch.Ready then error("Progress namespace unavailable") end
+	if generations[userId] == nil then
+		while loading[userId] do task.wait() end
+		if generations[userId] == nil then
+			loading[userId] = true
+			local ok, v = pcall(function() return not Epoch.SessionOnly and store:GetAsync("u_" .. userId) or 0 end)
+			loading[userId] = nil
+			if not ok then error("Player progress namespace unavailable") end
+			generations[userId] = math.max(0, math.floor(tonumber(v) or 0))
+		end
+	end
+	local key = (prefix or "p_") .. userId
+	if Epoch.Value > 0 then key = "e" .. Epoch.Value .. "_" .. key end
+	if generations[userId] > 0 then key = "r" .. generations[userId] .. "_" .. key end
+	return key
+end
+function Epoch.Store(name: string)
+	if not Epoch.Ready or Epoch.SessionOnly then error("Session-only storage") end
+	return DSS:GetDataStore(name)
+end
+function Epoch.Wipe(by: Player, userId: number?): (boolean, string)
+	local Items = require(game.ReplicatedStorage.Shared.Items)
+	if userId == nil then
+		if not Items.IsGameOwner(by) then return false, "Only the game owner can reset all progress." end
+	else
+		if not Items.IsOwner(by) or typeof(userId) ~= "number" or userId % 1 ~= 0 or userId <= 0 then return false, "Invalid player." end
+		local target = Players:GetPlayerByUserId(userId)
+		if target and Items.IsGameOwner(target) and not Items.IsGameOwner(by) then return false, "You cannot reset the game owner." end
+	end
+	if wiping or closing or not Epoch.Ready then return false, "Progress storage unavailable or reset already running." end
+	if Epoch.SessionOnly then closeForReset(userId); return true, "Studio session reset; no persistent saves changed." end
+	wiping = true
+	local ok, value = pcall(function()
+		return store:UpdateAsync(userId and ("u_" .. userId) or "epoch", function(old)
+			return math.max(tonumber(old) or 0, userId and (generations[userId] or 0) or Epoch.Value) + 1
+		end)
+	end)
+	wiping = false
+	if not ok then return false, "Reset failed; no new save generation was created." end
+	local data = userId and { userId = userId, generation = value } or value
+	pcall(function() Messaging:PublishAsync(TOPIC, data) end)
+	closeForReset(userId)
+	return true, userId and "Player progress reset globally." or "All player progress reset globally."
+end
+return Epoch
+
+ end
+ local epoch=loadEpoch();epoch.Init()
+ check(epoch.Ready and epoch.SessionOnly,"unpublished Studio starts in memory")
+ eq(calls,0,"unpublished Studio never requests a DataStore")
+ eq(epoch.Key(100),"p_100","Studio legacy key")
+ game.GameId=1;studio=false;meta.epoch=3;meta.u_101=2
+ epoch=loadEpoch();epoch.Init()
+ eq(epoch.Key(100),"e3_p_100","global namespace")
+ eq(epoch.Key(101),"r2_e3_p_101","individual namespace")
+ local owner=player(9,vec(0,0,0),true);owner.Character=nil;Players.list={owner}
+ check(epoch.Wipe(owner,101),"individual reset accepted")
+ eq(meta.u_101,3,"individual generation increments")
+ eq(epoch.Key(101),"r2_e3_p_101","late saves remain in old player generation")
+ local fresh=loadEpoch();fresh.Init();eq(fresh.Key(101),"r3_e3_p_101","fresh server sees player reset")
+ check(epoch.Wipe(owner),"global reset accepted")
+ eq(meta.epoch,4,"global generation increments")
+ eq(epoch.Key(100),"e3_p_100","late global writes retain old namespace")
+ check(not epoch.Wipe(player(8,vec(0,0,0),false)),"ordinary player cannot reset progress")
+ services.DataStoreService.GetDataStore=function() error("unavailable") end
+ local failed=loadEpoch();failed.Init();check(not failed.Ready,"unavailable production metadata disables persistence without startup throw")
+end
+do
+ local clock=2000;local os={clock=function() return clock end,time=function() return clock end};local workspace=workspace;workspace.GetServerTimeNow=function() return clock end
+ local Instance={new=function(class) local o=object(class);o.OnServerEvent=event();o.Triggered=event();o.FireClient=function() end;return o end}
+ local CFrame={new=function(p) return {Position=p} end}
+ local profiles={}
+ local moduleFolder={Persist={Get=function(p) profiles[p]=profiles[p] or {loaded=true};return profiles[p] end,Dirty=function() end}}
+ local script={Parent=moduleFolder}
+ local task={spawn=function() end,delay=function() end}
+ replicated.Remotes=remotes
+ local RaycastParams={new=function() return {} end}
+ local Enum={RaycastFilterType={Include=1},KeyCode={F=1}}
+ local Jobs=(function()
+ --!nonstrict
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Persist = require(script.Parent.Persist)
+local JobService = {}
+local definitions = {
+	assassination = { name = "PLAYER BOUNTY", description = "Eliminate one marked player. You must survive.", reward = 150, goal = 1, duration = 600 },
+	courier = { name = "PACKAGE DELIVERY", description = "Carry a real package between two random locations.", reward = 30, goal = 2, duration = 600 },
+	cleanup = { name = "THREE KILL STREAK", description = "Kill three players without dying. NPCs do not count.", reward = 200, goal = 3, duration = 600 },
+}
+local active, cooldown, requests = {}, {}, {}
+local deps, remote
+local rng = Random.new()
+local function root(p)
+	local ch = p.Character
+	return ch and not ch:GetAttribute("Dead") and ch:FindFirstChild("Torso") or nil
+end
+local function syncCooldown(p, prof)
+	if not prof or not prof.loaded then return end
+	if prof.jobActive and not active[p] then
+		prof.jobActive = false; prof.jobFailedUntil = os.time() + 180; Persist.Dirty(p)
+	end
+	local remaining = math.max(0, (prof.jobFailedUntil or 0) - os.time())
+	if remaining > 0 then cooldown[p] = math.max(cooldown[p] or 0, workspace:GetServerTimeNow() + remaining) end
+end
+local function send(p, message)
+	if not p.Parent then return end
+	syncCooldown(p, Persist.Get(p))
+	local job = active[p]
+	local d = job and definitions[job.id]
+	local target = job and job.targetPlayer and job.targetPlayer.Character
+	remote:FireClient(p, "state", job and {
+		id = job.id, name = d.name, reward = d.reward, goal = d.goal, progress = job.progress,
+		deadline = job.deadline, target = target, point = job.point,
+		objective = job.objective or d.description,
+	} or false, message, cooldown[p] or 0)
+end
+local function clear(p)
+	local job = active[p]; active[p] = nil
+	-- A PvP target is another player's character; never destroy it as job cleanup.
+	if job and job.package and job.package.Parent then
+		deps.OwnershipService.DropItem(job.package); job.package:Destroy()
+	end
+end
+local function fail(p, why)
+	if not active[p] then return end
+	local prof = Persist.Get(p)
+	if prof then prof.jobActive = false; prof.jobFailedUntil = os.time() + 180; Persist.Dirty(p) end
+	clear(p); cooldown[p] = workspace:GetServerTimeNow() + 180
+	send(p, (why or "CONTRACT FAILED") .. " / TRY AGAIN IN 3 MINUTES")
+end
+local function finish(p)
+	local job = active[p]
+	if not job then return end
+	local reward = definitions[job.id].reward
+	local progress = Persist.Get(p)
+	if progress then progress.jobActive = false; progress.jobFailedUntil = 0 end
+	clear(p); cooldown[p] = 0
+	deps.SkinService.AddCash(p, reward, "contract")
+	local prof = Persist.Get(p)
+	if prof then prof.jobsCompleted = (prof.jobsCompleted or 0) + 1; Persist.Dirty(p) end
+	send(p, "CONTRACT COMPLETE  +$" .. reward)
+end
+local function deliveryLocations()
+	local map = workspace:FindFirstChild("Map")
+	if not map then return {} end
+	local points = {}
+	local function add(label, pos)
+		local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Include
+		local env = { map }; for _, p in workspace:GetChildren() do if p:IsA("BasePart") and p.Anchored then table.insert(env, p) end end
+		rp.FilterDescendantsInstances = env
+		local hit = workspace:Raycast(pos + Vector3.new(0, 6, 0), Vector3.new(0, -18, 0), rp)
+		if hit and hit.Normal.Y > 0.8 then table.insert(points, { name = label, point = hit.Position + Vector3.new(0, 1.3, 0) }) end
+	end
+	local site = map:FindFirstChild("TeleportTarget_Site", true)
+	if site then add("CONSTRUCTION SITE", site.Position + Vector3.new(5, 0, 0)) end
+	local red = map:FindFirstChild("BrickHouse", true)
+	if red and red:IsA("Model") then local cf, size = red:GetBoundingBox(); add("RED HOUSE", Vector3.new(cf.X, 2, cf.Z + size.Z / 2 + 5)) end
+	local desk = map:FindFirstChild("RipperDeskSpot", true)
+	if desk then add("RIPPERDOC", desk.Position + Vector3.new(0, 0, 3)) end
+	local garage = map:FindFirstChild("Garage", true)
+	if garage and garage:IsA("Model") then local cf, size = garage:GetBoundingBox(); add("GARAGE", Vector3.new(cf.X, 2, cf.Z + size.Z / 2 + 5)) end
+	return points
+end
+local function accept(p, id)
+	local d, torso = definitions[id], root(p)
+	local prof = Persist.Get(p)
+	if not d or not torso or not prof or not prof.loaded or active[p] then return end
+	if torso.Parent:GetAttribute("ControlActive") then return end
+	syncCooldown(p, prof)
+	if workspace:GetServerTimeNow() < (cooldown[p] or 0) then send(p, "FAILED CONTRACT COOLDOWN"); return end
+	local mode = workspace:GetAttribute("Mode")
+	if mode and mode ~= "sandbox" and mode ~= "" then send(p, "Contracts are available in sandbox mode."); return end
+	local job = { id = id, progress = 0, deadline = workspace:GetServerTimeNow() + d.duration, character = p.Character, seen = {} }
+	if id == "assassination" then
+		local candidates = {}
+		for _, other in Players:GetPlayers() do
+			if other ~= p and root(other) and not deps.DamageService.Protected(other.Character, p) then table.insert(candidates, other) end
+		end
+		if #candidates == 0 then send(p, "No eligible player target is available."); return end
+		job.targetPlayer = candidates[rng:NextInteger(1, #candidates)]
+		job.targetCharacter = job.targetPlayer.Character
+		job.objective = "ELIMINATE " .. job.targetPlayer.DisplayName .. " (@" .. job.targetPlayer.Name .. ")"
+	elseif id == "cleanup" then
+		if #Players:GetPlayers() < 2 then send(p, "Another player must join first."); return end
+	elseif id == "courier" then
+		local locations = deliveryLocations()
+		if #locations < 2 then send(p, "Load the sandbox city for package routes."); return end
+		local start = table.remove(locations, rng:NextInteger(1, #locations))
+		local dest = locations[rng:NextInteger(1, #locations)]
+		job.point, job.destination, job.destinationName = start.point, dest.point, dest.name
+		job.objective = "COLLECT AT " .. start.name .. " / DELIVER TO " .. dest.name
+		job.package = deps.PropService.Place("package", CFrame.new(start.point), p)
+		if not job.package or not job.package.PrimaryPart then send(p, "Package unavailable."); return end
+		job.package:SetAttribute("BoundTo", p.UserId)
+		job.package:SetAttribute("DeliveryOwner", p.UserId)
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText, prompt.ObjectText = "Collect package", start.name
+		prompt.KeyboardKeyCode = Enum.KeyCode.F; prompt.MaxActivationDistance = 9
+		prompt.Parent = job.package.PrimaryPart
+		prompt.Triggered:Connect(function(who)
+			if who ~= p or active[p] ~= job or not root(p) or root(p).Parent:GetAttribute("ControlActive") then return end
+			if (root(p).Position - job.package.PrimaryPart.Position).Magnitude > 10 then return end
+			deps.OwnershipService.Equip(p, job.package, "Right")
+		end)
+		job.prompt = prompt
+	end
+	active[p] = job; prof.jobActive = true; Persist.Dirty(p); send(p, "CONTRACT ACCEPTED")
+end
+local function tick()
+			for p, job in active do
+				local torso = root(p)
+				if not torso or p.Character ~= job.character or workspace:GetServerTimeNow() >= job.deadline then fail(p)
+				elseif job.targetPlayer and (not root(job.targetPlayer) or job.targetPlayer.Character ~= job.targetCharacter) then fail(p, "TARGET LOST")
+				elseif job.package then
+					local box = job.package
+					if not box.Parent or not box.PrimaryPart then fail(p, "PACKAGE LOST"); continue end
+					local carrying = deps.OwnershipService.ItemHolder(box) == p or box:GetAttribute("StowedBy") == p.UserId
+					if job.progress == 0 and carrying then
+						job.progress = 1; job.point = job.destination; job.prompt.Enabled = false
+						job.objective = "CARRY THE PACKAGE TO " .. job.destinationName; send(p, "PACKAGE COLLECTED")
+					elseif job.progress == 1 and carrying and (torso.Position - job.destination).Magnitude < 9 and (box.PrimaryPart.Position - torso.Position).Magnitude < 12 then finish(p) end
+				end
+			end
+end
+function JobService.Init(d)
+	deps = d
+	remote = Instance.new("RemoteEvent"); remote.Name, remote.Parent = "Jobs", ReplicatedStorage.Remotes
+	remote.OnServerEvent:Connect(function(p, action, id)
+		if typeof(action) ~= "string" then return end
+		if p.Character and p.Character:GetAttribute("ControlActive") then return end
+		local now = os.clock()
+		if now - (requests[p] or 0) < 0.3 then return end
+		requests[p] = now
+		if action == "list" then remote:FireClient(p, "catalog", definitions); send(p)
+		elseif action == "accept" and typeof(id) == "string" then accept(p, id)
+		elseif action == "cancel" then fail(p, "CONTRACT CANCELLED") end
+	end)
+	local prior = deps.DamageService.OnKill
+	deps.DamageService.OnKill = function(victim, killer, state)
+		if prior then prior(victim, killer, state) end
+		local victimPlayer = Players:GetPlayerFromCharacter(victim)
+		if victimPlayer then fail(victimPlayer, "YOU DIED / CONTRACT FAILED") end
+		local job = killer and active[killer]
+		if job and root(killer) and victimPlayer and victimPlayer ~= killer and not job.seen[victim] then
+			if (job.id == "assassination" and job.targetPlayer == victimPlayer) or job.id == "cleanup" then
+				job.seen[victim] = true; job.progress += 1
+				if job.progress >= definitions[job.id].goal then finish(killer) else send(killer, "PLAYER ELIMINATED") end
+			end
+		end
+		for p, other in active do
+			if other.id == "assassination" and other.targetPlayer == victimPlayer then fail(p, "SOMEONE ELSE KILLED YOUR TARGET") end
+		end
+	end
+	Players.PlayerRemoving:Connect(function(p)
+		fail(p, "CONTRACT ABANDONED"); cooldown[p], requests[p] = nil, nil
+		for who, job in active do if job.targetPlayer == p then fail(who, "TARGET LEFT") end end
+	end)
+	task.spawn(function() while true do task.wait(0.25); tick() end end)
+end
+JobService._accept=accept;JobService._finish=finish;JobService._active=active;JobService._fail=fail;JobService._tick=tick;JobService._cooldown=cooldown
+return JobService
+
+ end)()
+ local paid=0;local holder=nil;local package
+ local Damage={Protected=function() return false end}
+ local own={DropItem=function() end,ItemHolder=function() return holder end,Grab=function(p) holder=p end}
+ local props={Place=function(_,cf,p) package=object("Model");package.PrimaryPart=object("Part");package.PrimaryPart.Position=cf.Position;return package end}
+ Jobs.Init({DamageService=Damage,OwnershipService=own,PropService=props,SkinService={AddCash=function(_,n) paid+=n end}})
+ local a=player(71,vec(0,0,0));a.Name="A";local b=player(72,vec(8,0,0));b.Name="B";Players.list={a,b}
+ Jobs._accept(a,"assassination");check(Jobs._active[a]~=nil,"PvP assassination accepted")
+ eq(Jobs._active[a].targetPlayer,b,"assassination selects real player")
+ Damage.OnKill(b.Character,a,{})
+ eq(paid,150,"PvP bounty pays 150");check(b.Character.Parent,"completion never destroys target character")
+ Jobs._accept(a,"cleanup");check(Jobs._active[a]~=nil,"success has no cooldown")
+ local npc=object("Model");npc:SetAttribute("IsNPC",true);Damage.OnKill(npc,a,{})
+ eq(Jobs._active[a].progress,0,"NPC kill does not advance PvP job")
+ Damage.OnKill(b.Character,a,{});Damage.OnKill(b.Character,a,{})
+ eq(Jobs._active[a].progress,1,"duplicate callback counted once")
+ b.Character=player(0,vec(8,0,0)).Character;Damage.OnKill(b.Character,a,{})
+ b.Character=player(0,vec(8,0,0)).Character;Damage.OnKill(b.Character,a,{})
+ eq(paid,350,"three player kills pay 200")
+ Jobs._finish(a);eq(paid,350,"job cannot pay twice")
+ Jobs._accept(a,"cleanup");Damage.OnKill(a.Character,b,{})
+ check(Jobs._active[a]==nil,"death removes active job");eq(Jobs._cooldown[a],2180,"failure cooldown exactly 180 seconds")
+ Jobs._accept(a,"cleanup");check(Jobs._active[a]==nil,"failure blocks next job")
+ Jobs._cooldown[a]=nil;Jobs._accept(a,"cleanup");check(Jobs._active[a]==nil,"persisted failure survives local cooldown reset")
+ clock=2181;Jobs._accept(a,"cleanup");check(Jobs._active[a]~=nil,"job accepted after cooldown")
+ Jobs._fail(a);clock=2362
+ -- A physical package, with two distinct random endpoints. Standing at the destination alone never pays.
+ local map=object("Model");workspace.children.Map=map
+ local site=object("Part");site.Position=vec(-40,0,0);map.children.TeleportTarget_Site=site
+ local desk=object("Part");desk.Position=vec(40,0,0);map.children.RipperDeskSpot=desk
+ local RaycastParams={new=function() return {} end}
+ -- JobService captures RaycastParams from its lexical outer scope, supplied below by the shared harness.
+ workspace.Raycast=function(_,pos) return {Position=vec(pos.X,0,pos.Z),Normal=vec(0,1,0)} end
+ Jobs._accept(a,"courier");local job=Jobs._active[a]
+ check(job and job.package~=nil,"courier creates physical package")
+ check((job.point-job.destination).Magnitude>1,"courier start and finish differ")
+ a.Character.children.Torso.Position=job.destination
+ Jobs._tick();eq(paid,350,"cannot deliver without package")
+ holder=a;package.PrimaryPart.Position=a.Character.children.Torso.Position
+ Jobs._tick();eq(job.progress,1,"actual held package advances collection")
+ Jobs._tick();eq(paid,380,"real delivery pays 30")
+ check(not package.Parent,"completed package removed")
+ workspace.children.Map=nil
+end
+do
+ local feedback=0
+ local GoreService={Sound=function() end,Burst=function() feedback+=1 end,FX=function() feedback+=1 end,Gibs=function() feedback+=1 end}
+ local Config={BulletDamage={Torso=50,Head=50},PelletDamage={Torso=10},BulletBleed={Torso=1,Head=1,Limb=1},BulletBleedTime=10,LimbMaxHP=100,BulletPush=1,PelletPush=1,BulletTorsoKnockdown=1}
+ local absorb=true
+ local DamageService={Protected=function() return false end,PartMass=function() return 1 end,Knock=function() end,Kill=function() end,ApplyDamage=function(m,r,d) if not absorb then m:SetAttribute("HP_"..r,(m:GetAttribute("HP_"..r) or 100)-d) end end}
+ function DamageService.ApplyBullet(model: Model, region: string, point: Vector3, dir: Vector3, shooter: Player?, pellet: boolean?, optsIn: BulletOpts?)
+	local o: BulletOpts = optsIn or {}
+	if DamageService.Protected(model, shooter) then
+		return
+	end
+	if DamageService.ShieldBullet and DamageService.ShieldBullet(model, region, point, dir, shooter, o.kind) then
+		return -- (v1.9) the bullet passes through a Wonder player
+	end
+	local count = o.count or 1
+	local base = ((pellet and Config.PelletDamage[region] or Config.BulletDamage[region]) or 50) * (o.mult or 1) * count
+	local bleed = region == "Head" and Config.BulletBleed.Head or region == "Torso" and Config.BulletBleed.Torso or Config.BulletBleed.Limb
+	if pellet then
+		bleed *= 0.35 * math.sqrt(count)
+	end
+	local cause = "Shot"
+	if shooter and Players:GetPlayerFromCharacter(model) == shooter then
+		cause = "Shot themselves"
+	elseif shooter then
+		cause = "Shot by " .. shooter.DisplayName
+	end
+	-- (v2.8.1) COLOSSUS: bullets ping off the armour (no damage, a head shot does not kill either)
+	if model:GetAttribute("Colossus") then
+		GoreService.Sound("metal", point, 0.8)
+		GoreService.FX({ t = "burst", p = point - dir * 0.15, d = -dir, n = 3, s = 10, black = true })
+		return
+	end
+	local wasSevered = model:GetAttribute("Severed_" .. region) == true
+	local wasBroken = model:GetAttribute("Broken_" .. region) == true
+	-- (v2.8.2) an AEGIS shield with charge left takes a head shot too (it drains the shield; the head's HP decide the rest)
+	local sh = model:GetAttribute("CyShield")
+	local shielded = typeof(sh) == "number" and sh >= 1
+	local hpBefore = model:GetAttribute("HP_" .. region) or Config.LimbMaxHP
+	DamageService.ApplyDamage(model, region, base, point, {
+		cause = region == "Head" and (cause .. " (head)") or cause,
+		allowSever = o.severAt ~= nil or o.allowSever == true,
+		severAt = o.severAt,
+		bullet = true,
+		bleed = bleed,
+		bleedTime = Config.BulletBleedTime,
+		attacker = shooter,
+	})
+	-- Damage modifiers (including AEGIS) resolve before any flesh feedback.
+	local hpAfter = model:GetAttribute("HP_" .. region) or hpBefore
+	if hpAfter >= hpBefore then return false end
+	local chrome = (region == "LeftArm" and model:GetAttribute("Titan_L") ~= nil) or (region == "RightArm" and model:GetAttribute("Titan_R") ~= nil)
+	if chrome then
+		GoreService.Sound("metal", point, 0.9)
+	else
+		GoreService.Sound("bulletFlesh", point, 1)
+		-- (v2.0) a little back-spatter out of the entry wound (towards the shooter); a bullet that goes through
+		-- sprays forward out of the exit wound (GunService)
+		GoreService.Burst(point - dir * 0.15, -dir, pellet and 4 or 7, 9)
+	end
+
+	if region == "Head" and not pellet and not shielded then
+		DamageService.Kill(model, cause .. " (head)")
+	end
+	-- point blank shotgun: the body part bursts
+	if o.severAt and base >= o.severAt then
+		if (not wasSevered and model:GetAttribute("Severed_" .. region)) or (region == "Torso" and not wasBroken) then
+			GoreService.Gibs(point, region == "Torso" and 10 or 6, 38)
+			GoreService.Burst(point, dir, 45, 30)
+			GoreService.Sound("gore", point, 1)
+		end
+		if region == "Torso" and not model:GetAttribute("Zombie") then
+			DamageService.Kill(model, cause .. " (point blank)")
+		end
+	end
+	-- the hit body part itself is knocked (a head shot snaps the head back, a leg shot kicks the leg)
+	local push = (pellet and Config.PelletPush or Config.BulletPush) * DamageService.PartMass(model, region) * (o.push or 1)
+	local down = ((not pellet and region == "Torso") or (pellet and count >= 3)) and Config.BulletTorsoKnockdown or nil
+	DamageService.Knock(model, region, dir * push, down, point)
+	return true
+end
+
+
+ local target=object("Model");target:SetAttribute("HP_Torso",100);target:SetAttribute("CyShield",100)
+ DamageService.ApplyBullet(target,"Torso",vec(0,0,0),vec(0,0,1),nil,false)
+ eq(feedback,0,"Aegis absorption produces no flesh blood")
+ eq(target:GetAttribute("HP_Torso"),100,"absorbed hit preserves flesh HP")
+ absorb=false;DamageService.ShieldBullet=function() return true end
+ DamageService.ApplyBullet(target,"Torso",vec(0,0,0),vec(0,0,1),nil,false)
+ eq(feedback,0,"dodge produces no flesh feedback")
+ eq(target:GetAttribute("HP_Torso"),100,"dodged hit preserves flesh HP")
+ DamageService.ShieldBullet=nil
+ check(DamageService.ApplyBullet(target,"Torso",vec(0,0,0),vec(0,0,1),nil,false),"unblocked bullet accepted")
+ check(feedback>0,"unblocked shot still produces blood")
+ eq(target:GetAttribute("HP_Torso"),50,"unblocked damage applied")
+end
+do
+ local count=0
+ local part=object("BasePart");local body=object("Model");body.children.Torso=part;body:SetAttribute("HP_Torso",100)
+ part.CFrame={PointToObjectSpace=function(_,v) return v end};part.Size=vec(2,2,1)
+ local DamageService={BodyOf=function() return body,"Torso" end}
+ local GoreService={ExitHole=function() count+=1 end,FX=function() count+=1 end}
+ local GunService={}
+ local Config={PenetrationMaxParts=3,PenetrationDamageKeep=.7}
+ local RigInfo={RegionPart={Torso="Torso"}}
+ local Ballistics={ExitDistance=function() return 1 end}
+ local function baseParams() return {FilterDescendantsInstances={}} end
+ local function checkClaim() return nil end
+ local hit={Instance=part,Position=vec(0,0,2),Normal=vec(0,0,-1),Material={Name="Plastic"}}
+ local casts=0
+ local workspace={Raycast=function() casts+=1;if casts==1 then return hit end end}
+ local function resolve(player: Player?, gun: Model, origin: Vector3, dir: Vector3, range: number, claim, pellet: boolean, push: number, onBody: (Model, string, Vector3, Vector3, number) -> (), shooterBody: Instance?, pen: number?)
+	local params = baseParams(gun, shooterBody)
+	local function cast(from: Vector3, dist: number)
+		local r = workspace:Raycast(from, dir * dist, params)
+		return r and { Instance = r.Instance, Position = r.Position, Normal = r.Normal, Material = r.Material } or nil
+	end
+	local function skip(inst: Instance)
+		local list = params.FilterDescendantsInstances
+		table.insert(list, inst)
+		params.FilterDescendantsInstances = list
+	end
+	local hit = nil
+	if typeof(claim) == "table" then
+		hit = checkClaim(gun, origin, dir, range, claim.part, claim.pos, claim.n)
+	end
+	if not hit then
+		hit = cast(origin, range)
+	end
+	local left = pellet and 0 or (pen or 0)
+	local keep = 1
+	local through = 0
+	local panes = 0
+	local exits = {}
+	local kind = "none"
+	while hit do
+		local part = hit.Instance
+		-- glass shatters and the bullet flies on (through up to 3 panes)
+		if panes < 3 and GunService.OnGlass and part:IsA("BasePart") and part.Material == Enum.Material.Glass then
+			if GunService.OnGlass(part, hit.Position, dir) then
+				panes += 1
+				skip(part)
+				local rest = range - (hit.Position - origin).Magnitude
+				hit = rest > 0.5 and cast(hit.Position, rest) or nil
+				continue
+			end
+		end
+		local body, region = DamageService.BodyOf(part)
+		if body and region then
+			local hpBefore = body:GetAttribute("HP_" .. region)
+			onBody(body, region, hit.Position, dir, keep)
+			-- A blocked/dodged shot never creates a penetration tunnel or exit blood.
+			if not pellet and hpBefore ~= nil and body:GetAttribute("HP_" .. region) == hpBefore then
+				kind = "shield"
+				break
+			end
+			-- does it come out the other side?
+			local bp = body:FindFirstChild(RigInfo.RegionPart[region] or "")
+			if left > 0 and through < Config.PenetrationMaxParts and bp and bp:IsA("BasePart") and not body:GetAttribute("Wonder") then
+				local thick = Ballistics.ExitDistance(bp, hit.Position, dir)
+				if thick <= left then
+					left -= thick
+					through += 1
+					local exitPos = hit.Position + dir * thick
+					table.insert(exits, { p = exitPos, k = keep })
+					GoreService.ExitHole(bp, exitPos, keep * (pen or 1))
+					-- (v2.0) and a real hole through it, on every screen (WoundHoles)
+					GoreService.FX({ t = "tunnel", part = bp, a = bp.CFrame:PointToObjectSpace(hit.Position), b = bp.CFrame:PointToObjectSpace(exitPos), k = keep * (pen or 1) })
+					keep *= Config.PenetrationDamageKeep
+					skip(bp)
+					if part ~= bp then
+						skip(part)
+					end
+					local rest = range - (exitPos - origin).Magnitude
+					hit = rest > 0.5 and cast(exitPos, rest) or nil
+					kind = "none"
+					continue
+				end
+			end
+			kind = "body"
+			break
+		end
+		kind = "world"
+		local car = modelWith(part, "Car")
+		local boom = modelWith(part, "Explosive")
+		local item = Items.ModelOf(part)
+		if car and GunService.OnHitCar then
+			GunService.OnHitCar(car, (pellet and Config.CarBulletDamage * 0.4 or Config.CarBulletDamage) * keep, player)
+		end
+		if item and Items.Kind(item) == "boombox" and GunService.OnHitItem then
+			GunService.OnHitItem(item, pellet and 9 or 28) -- (v1.9.1: bullets break a boombox)
+		end
+		if GunService.OnHitPart and part:IsA("BasePart") then
+			GunService.OnHitPart(part, player)
+		end
+		-- (v2.0) the Crawler, sharks
+		local creature = modelWith(part, "Creature")
+		if creature and GunService.OnHitCreature then
+			local st = Config.Guns[Items.Kind(gun) or ""]
+			local dmg = Config.BulletDamage.Torso * ((st and st.damageMult) or 0.62) * keep * (pellet and 0.35 or 1)
+			GunService.OnHitCreature(creature, part, dmg, player, hit.Position)
+		end
+		if boom and GunService.OnHitExplosive then
+			GunService.OnHitExplosive(boom, player)
+		end
+		local ik = item and Items.Kind(item)
+		if item and (ik == "grenade" or ik == "flash" or ik == "c4" or ik == "virus" or ik == "molotov") and GunService.OnHitGrenade then
+			GunService.OnHitGrenade(item, player)
+		end
+		if GunService.OnHitWorld and part:IsA("BasePart") then
+			GunService.OnHitWorld(part, hit.Position, dir, (pellet and 0.4 or 1) * keep, player) -- (v2.0: buildings crumble)
+		end
+		if part:IsA("BasePart") and not part.Anchored then
+			-- the owner of the object applies the push
+			GoreService.FX({ t = "push", part = part, i = dir * (pellet and push * 0.4 or push * 0.7) * keep * math.min(part.AssemblyMass, 4), p = hit.Position })
+		end
+		break
+	end
+	return {
+		to = hit and hit.Position or (origin + dir * range),
+		n = hit and hit.Normal or Vector3.yAxis,
+		k = kind,
+		mat = hit and hit.Material.Name or "",
+		part = hit and hit.Instance or nil,
+		ex = #exits > 0 and exits or nil,
+	}
+end
+
+
+ local result=resolve(nil,{},vec(0,0,0),vec(0,0,1),100,nil,false,1,function() end,nil,5)
+ eq(count,0,"blocked bullet creates neither exit hole nor tunnel")
+ eq(result.k,"shield","blocked hit is marked as shield")
+ casts=0
+ resolve(nil,{},vec(0,0,0),vec(0,0,1),100,nil,false,1,function() body:SetAttribute("HP_Torso",50) end,nil,5)
+ eq(count,2,"flesh penetration still emits exit and tunnel")
+end
+do
+ local clock=4000;workspace.GetServerTimeNow=function() return clock end
+ local game={ReplicatedStorage={Shared={Items=Items,Config=Config}},GetService=function(_,n) return n=="Players" and Players or {} end}
+ local task={spawn=function() end}
+ local Service=(function()
+ --!nonstrict
+-- Server-owned directives: client inputs cannot choose the goal, gun, target, or end time.
+local Players = game:GetService("Players")
+local Items = require(game.ReplicatedStorage.Shared.Items)
+local Config = require(game.ReplicatedStorage.Shared.Config)
+local Service = {}
+local directives, deps = {}, nil
+local function torso(ch) return ch and not ch:GetAttribute("Dead") and ch:FindFirstChild("Torso") end
+local function clear(p)
+	directives[p] = nil
+	p:SetAttribute("ControlTarget", nil)
+	local ch = p.Character
+	if ch then
+		for _, a in { "ControlActive", "ControlGoal", "ControlAim", "ControlMove", "CrashOut" } do ch:SetAttribute(a, nil) end
+	end
+end
+function Service.Start(p, targetId, seconds)
+	if not p or not p.Parent then return false end
+	if targetId then
+		local target = Players:GetPlayerByUserId(targetId)
+		if not target or target == p or not torso(target.Character) then return false end
+	end
+	local current = directives[p]
+	if current and current.targetId and not targetId then return true end
+	directives[p] = { targetId = targetId, untilT = targetId and math.huge or workspace:GetServerTimeNow() + (seconds or 10), nextGun = 0, nextShot = 0 }
+	p:SetAttribute("ControlTarget", targetId)
+	if p.Character then p.Character:SetAttribute("ControlActive", true) end
+	return true
+end
+local function nearestTarget(p, root)
+	local result, distance = nil, 300
+	for body in deps.DamageService.Bodies() do
+		local t = torso(body)
+		if body ~= p.Character and t and not deps.DamageService.Protected(body, p) then
+			local d = (t.Position - root.Position).Magnitude
+			if d < distance then result, distance = body, d end
+		end
+	end
+	return result
+end
+local function gunFor(p, root, rec)
+	for _, m in deps.OwnershipService.HeldItems(p) do
+		local k = Items.Kind(m)
+		if k and Config.Guns[k] and not Config.Guns[k].projectile and not Config.Guns[k].dart then return m end
+	end
+	local candidate = rec.gun
+	if candidate and (not candidate.Parent or deps.OwnershipService.ItemHolder(candidate)) then candidate = nil end
+	if not candidate and os.clock() >= rec.nextGun then
+		rec.nextGun = os.clock() + 1
+		local props = workspace:FindFirstChild("Props")
+		local best = 80
+		for _, m in (props and props:GetChildren() or {}) do
+			local k = m:IsA("Model") and Items.Kind(m)
+			local bound = m:GetAttribute("BoundTo")
+			if k and Config.Guns[k] and not Config.Guns[k].projectile and not Config.Guns[k].dart and m.PrimaryPart and not m.PrimaryPart.Anchored and not deps.OwnershipService.ItemHolder(m) and not m:GetAttribute("StowedBy") and (not bound or bound == p.UserId) then
+				local d = (m.PrimaryPart.Position - root.Position).Magnitude
+				if d < best then candidate, best = m, d end
+			end
+		end
+		-- The directive arms an unarmed player even when the room has no loose weapon.
+		if not candidate then
+			candidate = deps.PropService.Place("pistol", root.CFrame * CFrame.new(0, 0, -2), p)
+			if candidate then candidate:SetAttribute("BoundTo", p.UserId) end
+		end
+		rec.gun = candidate
+	end
+	if candidate and candidate.PrimaryPart then
+		local pos = candidate.PrimaryPart.Position
+		if (pos - root.Position).Magnitude <= 6 then
+			for _, item in deps.OwnershipService.HeldItems(p) do deps.OwnershipService.DropItem(item) end
+			deps.OwnershipService.Equip(p, candidate, "Right")
+			if deps.OwnershipService.ItemHolder(candidate) == p then return candidate end
+		end
+		return nil, pos
+	end
+end
+function Service.Init(d)
+	deps = d
+	local previous = deps.DamageService.OnKill
+	deps.DamageService.OnKill = function(victim, killer, state)
+		if previous then previous(victim, killer, state) end
+		local target = Players:GetPlayerFromCharacter(victim)
+		if target then
+			for p, rec in directives do if rec.targetId == target.UserId then clear(p) end end
+		end
+	end
+	Players.PlayerRemoving:Connect(function(p) directives[p] = nil end)
+	task.spawn(function()
+		while true do
+			task.wait(0.1)
+			local now = workspace:GetServerTimeNow()
+			for _, p in Players:GetPlayers() do
+				local ch, rec = p.Character, directives[p]
+				local root = torso(ch)
+				if not rec and root and (ch:GetAttribute("CrashOut") or 0) > now then
+					Service.Start(p, nil, ch:GetAttribute("CrashOut") - now); rec = directives[p]
+				end
+				if not rec then continue end
+				if now >= rec.untilT then clear(p); continue end
+				local tp = rec.targetId and Players:GetPlayerByUserId(rec.targetId)
+				if tp and tp.Character and tp.Character:GetAttribute("Dead") then clear(p); continue end
+				if not root then continue end -- target directives resume after their carrier respawns
+				ch:SetAttribute("ControlActive", true)
+				if (ch:GetAttribute("TemporalFrozenUntil") or 0) > now then ch:SetAttribute("ControlMove", false); continue end
+				local target
+				if rec.targetId then target = tp and tp.Character else target = nearestTarget(p, root) end
+				local tt = torso(target)
+				local gun, pickup = gunFor(p, root, rec)
+				local goal = pickup or (tt and tt.Position)
+				ch:SetAttribute("ControlGoal", goal)
+				ch:SetAttribute("ControlAim", tt and tt.Position or goal)
+				ch:SetAttribute("ControlMove", goal ~= nil and (goal - root.Position).Magnitude > (pickup and 4 or 18))
+				if gun and tt and os.clock() >= rec.nextShot then
+					rec.nextShot = os.clock() + 0.25
+					if (gun:GetAttribute("Ammo") or 0) <= 0 then deps.ItemService.Reload(p, gun)
+					else
+						local muzzle = Items.Muzzle(gun)
+						if muzzle then
+							local origin = muzzle.WorldPosition
+							local delta = tt.Position - origin
+							if delta.Magnitude > 0.1 then deps.GunService.Fire(p, gun, origin, { { dir = delta.Unit } }, true) end
+						end
+					end
+				end
+			end
+		end
+	end)
+end
+Service._directives=directives
+return Service
+
+ end)()
+ local a=player(81,vec(0,0,0));local b=player(82,vec(5,0,0));Players.list={a,b}
+ local damage={OnKill=nil}
+ Service.Init({DamageService=damage})
+ check(Service.Start(a,b.UserId),"target directive begins")
+ eq(Service._directives[a].untilT,math.huge,"kill target has no duration timeout")
+ check(a.Character:GetAttribute("ControlActive"),"directive locks character input")
+ Service.Start(a,nil,8)
+ eq(Service._directives[a].targetId,b.UserId,"short rampage cannot replace kill directive")
+ damage.OnKill(a.Character,b,{})
+ check(Service._directives[a]~=nil,"carrier death does not finish target directive")
+ damage.OnKill(b.Character,a,{})
+ check(Service._directives[a]==nil,"target death finishes directive")
+ check(not a.Character:GetAttribute("ControlActive"),"target death releases controls")
+ check(not Service.Start(a,a.UserId),"self target rejected")
+end
+do
+ local saved={g_92={powers={"freecam","fly"},titles={},admin=false,rev=1,granters={["power:freecam"]=91,["power:fly"]=93}}}
+ local store={GetAsync=function(_,k) return saved[k] end,UpdateAsync=function(_,k,fn) local d=fn(saved[k]);if d then saved[k]=d end;return d end}
+ local Items={POWERS={"freecam","fly"},IsOwner=function(p) return p.admin end,IsGameOwner=function(p) return p.UserId==90 end}
+ local services={Players=Players,DataStoreService={GetDataStore=function() return store end},RunService={IsStudio=function() return false end},MessagingService={SubscribeAsync=function() end,PublishAsync=function() end}}
+ local game={GameId=1,ReplicatedStorage={Shared={Items=Items,Titles={List={},ById={}},Config={GiftStoreName="gifts"}},Remotes={}},GetService=function(_,n) return services[n] end}
+ local script={Parent={SaveGate={CanSave=function() return true end}}}
+ local task={spawn=function() end,wait=function() end}
+ local Instance={new=function() return {OnServerEvent=event(),FireClient=function() end} end}
+ local Registry=(function()
+ --!nonstrict
+-- Persistent gift records are updated by field, so an offline revoke cannot be undone by a stale player snapshot.
+local Players = game:GetService("Players")
+local DSS = game:GetService("DataStoreService")
+local Messaging = game:GetService("MessagingService")
+local RunService = game:GetService("RunService")
+local Shared = game.ReplicatedStorage.Shared
+local Items, Titles, Config = require(Shared.Items), require(Shared.Titles), require(Shared.Config)
+local SaveGate = require(script.Parent.SaveGate)
+local Registry = {}
+local store, apply, remote
+local cache, versions, pages, busy, last = {}, {}, {}, {}, {}
+local TOPIC = "RagdollGiftChanges_v2"
+local function key(id) return "g_" .. id end
+local function normalize(raw)
+	local d = typeof(raw) == "table" and table.clone(raw) or {}
+	d.powers = typeof(d.powers) == "table" and table.clone(d.powers) or {}
+	d.titles = typeof(d.titles) == "table" and table.clone(d.titles) or {}
+	d.granters = typeof(d.granters) == "table" and table.clone(d.granters) or {}
+	d.admin = d.admin == true; d.rev = tonumber(d.rev) or 0
+	return d
+end
+local function valid(k)
+	if k == "admin" then return true end
+	local kind, id = k:match("^(%a+):([%w_]+)$")
+	return kind == "power" and table.find(Items.POWERS, id) ~= nil or kind == "title" and Titles.ById[id] and Titles.ById[id].source == "gift"
+end
+local function keys(d)
+	local all = {}
+	for _, p in d.powers do if table.find(Items.POWERS, p) then table.insert(all, "power:" .. p) end end
+	for _, p in d.titles do if Titles.ById[p] and Titles.ById[p].source == "gift" then table.insert(all, "title:" .. p) end end
+	if d.admin then table.insert(all, "admin") end
+	return all
+end
+local function accept(id, d)
+	if d.rev < (versions[id] or -1) then return end
+	cache[id], versions[id] = d, d.rev
+	local p = Players:GetPlayerByUserId(id)
+	if p and apply then apply(p, d) end
+end
+function Registry.Load(p)
+	local ok, data = pcall(function() if not store then return cache[p.UserId] end
+		local options = Instance.new("DataStoreGetOptions"); options.UseCache = false
+		return store:GetAsync(key(p.UserId), options) end)
+	if ok and p.Parent then accept(p.UserId, normalize(data)) end
+	return ok
+end
+function Registry.Set(by, id, gift, on)
+	if not Items.IsOwner(by) or typeof(id) ~= "number" or id % 1 ~= 0 or id <= 0 or typeof(gift) ~= "string" or not valid(gift) then return false, "Invalid gift request." end
+	local owner = Items.IsGameOwner(by)
+	if gift == "admin" and not owner then return false, "Only the owner can change admin gifts." end
+	local target = Players:GetPlayerByUserId(id)
+	if target and Items.IsGameOwner(target) and not RunService:IsStudio() then return false, "The owner already has every power." end
+	if busy[id] then return false, "This record is being updated. Try again." end
+	busy[id] = true
+	local denied = false
+	local function update(raw)
+		local d = normalize(raw)
+		if not owner and (d.admin or (not on and d.granters[gift] ~= by.UserId)) then denied = true; return nil end
+		if gift == "admin" then d.admin = on
+		else
+			local group, name = gift:match("^(%a+):(.+)$")
+			local list = group == "power" and d.powers or d.titles
+			local i = table.find(list, name)
+			if on and not i then table.insert(list, name) elseif not on and i then table.remove(list, i) end
+		end
+		d.granters[gift] = on and by.UserId or nil
+		d.name = target and target.Name or d.name or ("User " .. id)
+		d.rev += 1; d.v = 2
+		return d
+	end
+	-- Ordinary private-server gifts remain session-only. The game owner can manage durable gifts anywhere.
+	local durable = store and (SaveGate.CanSave() or owner)
+	if not durable and not target then busy[id] = nil; return false, "Offline gift storage is unavailable here." end
+	local ok, data = pcall(function()
+		if durable then return store:UpdateAsync(key(id), update) end
+		return update(cache[id])
+	end)
+	busy[id] = nil
+	if not ok or not data or denied then return false, denied and "You can only revoke your own gifts." or "Gift save failed; try again." end
+	accept(id, normalize(data))
+	if durable then pcall(function() Messaging:PublishAsync(TOPIC, { id = id, rev = data.rev }) end) end
+	return true, on and "Gift granted." or "Gift revoked globally."
+end
+local function entry(by, id, d)
+	local visible = {}
+	for _, gift in keys(d) do
+		if Items.IsGameOwner(by) or d.granters[gift] == by.UserId then table.insert(visible, gift) end
+	end
+	if #visible == 0 then return nil end
+	return { userId = id, name = d.name or ("User " .. id), online = Players:GetPlayerByUserId(id) ~= nil, gifts = visible }
+end
+local function list(by, nextPage, userId)
+	local entries, more = {}, false
+	local ok, err = pcall(function()
+		if userId then
+			local d = normalize(store and store:GetAsync(key(userId)) or cache[userId])
+			local e = entry(by, userId, d); if e then table.insert(entries, e) end
+		elseif store then
+			if not nextPage or not pages[by] then pages[by] = store:ListKeysAsync("g_", 20)
+			elseif not pages[by].IsFinished then pages[by]:AdvanceToNextPageAsync() end
+			for _, k in pages[by]:GetCurrentPage() do
+				local id = tonumber(k.KeyName:match("^g_(%d+)$"))
+				if id then
+					local e = entry(by, id, normalize(store:GetAsync(k.KeyName)))
+					if e then table.insert(entries, e) end
+				end
+			end
+			more = not pages[by].IsFinished
+		else
+			for id, d in cache do local e = entry(by, id, d); if e then table.insert(entries, e) end end
+		end
+	end)
+	if by.Parent then remote:FireClient(by, "list", entries, more, ok and (#entries == 0 and "No matching gifts on this page." or "Saved gifts / select one to revoke") or "Gift storage is unavailable. Try again.") end
+end
+function Registry.Init(callback)
+	apply = callback
+	if not (RunService:IsStudio() and game.GameId == 0) then
+		local ok, value = pcall(function() return DSS:GetDataStore(Config.GiftStoreName) end)
+		if ok then store = value end
+	end
+	remote = Instance.new("RemoteEvent"); remote.Name, remote.Parent = "GiftRegistry", game.ReplicatedStorage.Remotes
+	remote.OnServerEvent:Connect(function(by, action, id, gift)
+		if not Items.IsOwner(by) or (by.Character and by.Character:GetAttribute("ControlActive")) then return end
+		if os.clock() - (last[by] or -10) < 1 then return end
+		last[by] = os.clock()
+		if action == "list" then list(by, false)
+		elseif action == "next" then list(by, true)
+		elseif action == "lookup" and typeof(id) == "number" and id % 1 == 0 and id > 0 then list(by, false, id)
+		elseif action == "revoke" then
+			local ok, message = Registry.Set(by, id, gift, false)
+			remote:FireClient(by, "result", ok, message)
+			if ok then list(by, false, id) end
+		end
+	end)
+	if store then
+		pcall(function() Messaging:SubscribeAsync(TOPIC, function(m)
+			local d = m.Data
+			if typeof(d) == "table" and typeof(d.id) == "number" then
+				local p = Players:GetPlayerByUserId(d.id)
+				if p then Registry.Load(p) end
+			end
+		end) end)
+		task.spawn(function()
+			while true do task.wait(45); for _, p in Players:GetPlayers() do Registry.Load(p) end end
+		end)
+	end
+	Players.PlayerRemoving:Connect(function(p) pages[p], last[p] = nil, nil end)
+end
+return Registry
+
+ end)()
+ local admin=player(91,vec(0,0,0),true);local owner=player(90,vec(0,0,0),true);Players.list={admin,owner}
+ Registry.Init(function() end)
+ check(Registry.Set(admin,92,"power:freecam",false),"admin revokes own offline gift")
+ check(not table.find(saved.g_92.powers,"freecam"),"offline removal saved")
+ check(table.find(saved.g_92.powers,"fly")~=nil,"unrelated gift preserved")
+ check(not Registry.Set(admin,92,"power:fly",false),"admin cannot revoke someone else's offline gift")
+ check(Registry.Set(owner,92,"power:fly",false),"owner can manage legacy and other gifts")
+ eq(#saved.g_92.powers,0,"all selected gifts removed")
+ check(not Registry.Set(admin,92,"admin",true),"nonowner cannot gift admin")
+ check(not Registry.Set(admin,92,"power:unknown",true),"unlisted power rejected")
+end
+do
+ local scheduled, activeTarget = {}, nil
+ local victim=player(102,vec(0,0,0));local attacker=player(101,vec(2,0,0));Players.list={victim,attacker}
+ local task={delay=function(delay,fn) table.insert(scheduled,{delay,fn}) end}
+ local script={Parent={ControlService={Start=function(p,id) activeTarget=id;return true end}}}
+ local states={} -- current module is used below through a small export boundary
+ local ChipService={}
+ local chipdeps={DamageService={Protected=function() return false end}}
+ local deps=chipdeps
+ local function say() end
+ local function fxTo() end
+ local function firewallOf() return 0 end
+ function ChipService.FirePayload(victim: Model, chip: Chip, attacker: Player?)
+	if not chip.payload or not victim or victim:GetAttribute("Dead") then return end
+	local payload = table.clone(chip)
+	if attacker then say(attacker, "VIRUS ARMED — ACTIVATES IN 15 SECONDS.") end
+	task.delay(15, function()
+		if not victim.Parent or victim:GetAttribute("Dead") then return end
+		local vp = Players:GetPlayerFromCharacter(victim)
+		if vp and vp.Character ~= victim then return end
+		local landed = false
+		if payload.payload == "killtarget" then
+			if vp and typeof(payload.target) == "number" and not deps.DamageService.Protected(victim, attacker) and firewallOf(vp) < payload.tier then
+				landed = require(script.Parent.ControlService).Start(vp, payload.target, nil)
+				if landed then fxTo(vp, "rampage", 5, payload.target) end
+			else fxTo(vp, "blocked") end
+		else
+			landed = ChipService.Hit(victim, payload.payload == "rampage" and "psycho" or payload.payload, payload.tier, attacker, true)
+		end
+		if landed and attacker and attacker.Parent then say(attacker, "PAYLOAD ACTIVE.") end
+	end)
+end
+
+
+ ChipService.FirePayload(victim.Character,{payload="killtarget",target=103,tier=2},attacker)
+ eq(#scheduled,1,"virus scheduled once");eq(scheduled[1][1],15,"virus incubation exactly 15 seconds")
+ eq(activeTarget,nil,"virus does not activate immediately")
+ scheduled[1][2]();eq(activeTarget,103,"virus activates stored target")
+ activeTarget=nil;ChipService.FirePayload(victim.Character,{payload="killtarget",target=103,tier=2},attacker)
+ victim.Character:SetAttribute("Dead",true);scheduled[2][2]()
+ eq(activeTarget,nil,"dead carrier cancels pending payload")
+end
+do
+ local p=player(140,vec(0,0,0),true);p:SetAttribute("Cash",500)
+ local charged=0;Config.VirusPrice=250
+ Chip._states[p]={slots={},bag={{uid=44,id="blank",kind="blank",tier=1}},dodgeLeft=0,dodgeRefill=0}
+ Chip._setup({SkinService={AddCash=function(_,n) charged+=n end}},{FireClient=function() end})
+ Chip.Program(p,44,"rampage",1,nil)
+ eq(charged,-250,"virus writing costs money even for admins")
+ eq(Chip._states[p].bag[1].payload,"rampage","paid programming writes payload")
+ local held=object("Model");held:SetAttribute("ChipId","capacity");held:SetAttribute("ChipKind","capacity");held:SetAttribute("ChipUid",55)
+ local events={}
+ Chip._setup({OwnershipService={ItemHolder=function(item) return item.Parent and p or nil end,DropItem=function() end}},{FireClient=function(_,_,action) table.insert(events,action) end})
+ Chip.PlayHeld(p,held)
+ check(not held.Parent,"F stows physical chip")
+ eq(#Chip._states[p].bag,2,"F adds chip to bag once")
+ check(table.find(events,"opendeck")~=nil,"F opens deck")
+ Chip.PlayHeld(p,held);eq(#Chip._states[p].bag,2,"stowing same destroyed chip cannot duplicate")
+end
+do
+ local blocked=false;local moved=0
+ workspace.GetServerTimeNow=function() return 5000 end
+ workspace.Blockcast=function() return blocked and {} or nil end
+ workspace.Raycast=function() return {Position=vec(0,-3,0),Normal=vec(0,1,0)} end
+ local own={HeldItems=function() return {} end}
+ Chip._setup({OwnershipService=own},{FireClient=function() end})
+ for tier=1,3 do
+  local p=player(120+tier,vec(0,3,0));Players.list={p}
+  local ch=p.Character;local root=ch.children.Torso;root.CFrame={RightVector=vec(1,0,0)}
+  ch.GetPivot=function() return setmetatable({}, {__add=function(_,delta) return {Position=root.Position+delta} end}) end
+  ch.PivotTo=function(_,cf) moved+=1;root.Position=cf.Position end
+  Chip._states[p]={slots={[1]={id="dodge",tier=tier}},bag={},dodgeLeft=tier,dodgeRefill=0}
+  check(Chip._dodge(ch,vec(0,3,0),vec(0,0,1)),"tier "..tier.." dodges")
+  check(math.abs(root.Position.X)>2.5,"dodge physically sidesteps")
+  eq(Chip._states[p].dodgeLeft,tier-1,"dodge consumes one charge")
+  check(Chip._dodge(ch,vec(0,3,0),vec(0,0,1)),"same volley remains dodged")
+  eq(Chip._states[p].dodgeLeft,tier-1,"same volley does not consume another charge")
+  ch:SetAttribute("DodgeUntil",nil);Chip._states[p].dodgeLeft=1;blocked=true
+  check(not Chip._dodge(ch,vec(0,3,0),vec(0,0,1)),"blocked lanes prevent teleport")
+  eq(Chip._states[p].dodgeLeft,1,"blocked dodge keeps charge")
+  blocked=false
+ end
+ eq(moved,3,"one physical move per volley")
+end
+do
+ local st={list={},psycho=0}
+ local CyberService={}
+ local function stOf() return st end
+ local function publish() end
+ local Cyberware={Load=function(list) local n=0;for _,v in list do n+=v end;return n end}
+ function CyberService.AdminPsychosis(p: Player, enabled: boolean)
+	if not Items.IsOwner(p) then return end
+	local st = stOf(p)
+	if not enabled or Cyberware.Load(st.list) <= 0 then st.psycho = 0 end
+	publish(p)
+	p:SetAttribute("CyPsycho", st.psycho > 0 and st.psycho or nil)
+end
+
+
+ local admin=player(130,vec(0,0,0),true)
+ CyberService.AdminPsychosis(admin,true)
+ eq(st.psycho,0,"turning immunity off does not inject psychosis")
+ st.psycho=.65;CyberService.AdminPsychosis(admin,true)
+ eq(st.psycho,0,"no implants clears artificial old stress")
+ st.list={pump=1};st.psycho=.2;CyberService.AdminPsychosis(admin,true)
+ eq(st.psycho,.2,"immunity switch preserves real existing stress without increasing it")
+ CyberService.AdminPsychosis(admin,false);eq(st.psycho,0,"restoring immunity clears stress")
+end
+
+print("PASS: "..total.." current-source assertions")

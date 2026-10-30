@@ -707,6 +707,7 @@ function LedgerClient.Init()
 	end)
 
 	UserInputService.InputBegan:Connect(function(io)
+		if Input.IsControlled() then return end
 		if open and io.KeyCode == Enum.KeyCode.Escape then
 			setOpen(false)
 		end

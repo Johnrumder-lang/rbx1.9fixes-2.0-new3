@@ -1,0 +1,22 @@
+do
+ local clock=4000;workspace.GetServerTimeNow=function() return clock end
+ local game={ReplicatedStorage={Shared={Items=Items,Config=Config}},GetService=function(_,n) return n=="Players" and Players or {} end}
+ local task={spawn=function() end}
+ local Service=(function()
+ @MODULE:ControlService@
+ end)()
+ local a=player(81,vec(0,0,0));local b=player(82,vec(5,0,0));Players.list={a,b}
+ local damage={OnKill=nil}
+ Service.Init({DamageService=damage})
+ check(Service.Start(a,b.UserId),"target directive begins")
+ eq(Service._directives[a].untilT,math.huge,"kill target has no duration timeout")
+ check(a.Character:GetAttribute("ControlActive"),"directive locks character input")
+ Service.Start(a,nil,8)
+ eq(Service._directives[a].targetId,b.UserId,"short rampage cannot replace kill directive")
+ damage.OnKill(a.Character,b,{})
+ check(Service._directives[a]~=nil,"carrier death does not finish target directive")
+ damage.OnKill(b.Character,a,{})
+ check(Service._directives[a]==nil,"target death finishes directive")
+ check(not a.Character:GetAttribute("ControlActive"),"target death releases controls")
+ check(not Service.Start(a,a.UserId),"self target rejected")
+end

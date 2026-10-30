@@ -234,7 +234,7 @@ return function(Controller)
 	-- hand frame on the arm: looks down the arm (-Y), up = front of the arm (-Z)
 	Controller.GUN_HAND_CFRAME = RigInfo.GunHandCFrame
 
-	function Controller:_gripItem(side: string, item: Model)
+	function Controller:_gripItem(side: string, item: Model, serverAssigned: boolean?)
 		local L = self.limbs[ARM_OF[side]]
 		local hand = self.hands[side]
 		local handle = item.PrimaryPart
@@ -318,7 +318,7 @@ return function(Controller)
 			remote = true,
 		}
 		hand.armed = true
-		GripRemote:FireServer("grab", handle, side)
+		if not serverAssigned then GripRemote:FireServer("grab", handle, side) end
 		self.armSuppress[side] = os.clock() + 0.3
 		SoundLibrary.Play("click", handle, 0.6)
 		self:_rebuildFilters()
@@ -616,7 +616,7 @@ return function(Controller)
 		return MathUtil.SafeUnit(target - from, Cam.LookVector())
 	end
 
-	function Controller:_release(side: string, throw: boolean)
+	function Controller:_release(side: string, throw: boolean, serverAssigned: boolean?)
 		local hand = self.hands[side]
 		local g = hand.grip
 		hand.armed = false -- a released hand is open again; only Q / E closes it
@@ -736,7 +736,7 @@ return function(Controller)
 					g.part.AssemblyLinearVelocity += handVel * Config.ThrowBoost
 				end)
 			end
-			if g.remote then
+			if g.remote and not serverAssigned then
 				GripRemote:FireServer("release", g.part, side, throwVel)
 			end
 		end
@@ -1924,6 +1924,9 @@ return function(Controller)
 					ItemRemote:FireServer("use", g.item)
 					SoundLibrary.Play("pin", g.part, 0.8)
 				end
+			elseif kind == "chip" or kind == "camera" then
+				local chipRemote = ReplicatedStorage.Remotes:FindFirstChild("Chip")
+				if chipRemote then chipRemote:FireServer(kind == "chip" and "helduse" or "cam", g.item) end
 			elseif kind == "bandage" then
 				if not self.bandaging then
 					-- wrap it on: the hand circles around the body part, then the server applies it

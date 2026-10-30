@@ -1,0 +1,38 @@
+do
+ local scheduled, activeTarget = {}, nil
+ local victim=player(102,vec(0,0,0));local attacker=player(101,vec(2,0,0));Players.list={victim,attacker}
+ local task={delay=function(delay,fn) table.insert(scheduled,{delay,fn}) end}
+ local script={Parent={ControlService={Start=function(p,id) activeTarget=id;return true end}}}
+ local states={} -- current module is used below through a small export boundary
+ local ChipService={}
+ local chipdeps={DamageService={Protected=function() return false end}}
+ local deps=chipdeps
+ local function say() end
+ local function fxTo() end
+ local function firewallOf() return 0 end
+ @PAYLOAD@
+ ChipService.FirePayload(victim.Character,{payload="killtarget",target=103,tier=2},attacker)
+ eq(#scheduled,1,"virus scheduled once");eq(scheduled[1][1],15,"virus incubation exactly 15 seconds")
+ eq(activeTarget,nil,"virus does not activate immediately")
+ scheduled[1][2]();eq(activeTarget,103,"virus activates stored target")
+ activeTarget=nil;ChipService.FirePayload(victim.Character,{payload="killtarget",target=103,tier=2},attacker)
+ victim.Character:SetAttribute("Dead",true);scheduled[2][2]()
+ eq(activeTarget,nil,"dead carrier cancels pending payload")
+end
+do
+ local p=player(140,vec(0,0,0),true);p:SetAttribute("Cash",500)
+ local charged=0;Config.VirusPrice=250
+ Chip._states[p]={slots={},bag={{uid=44,id="blank",kind="blank",tier=1}},dodgeLeft=0,dodgeRefill=0}
+ Chip._setup({SkinService={AddCash=function(_,n) charged+=n end}},{FireClient=function() end})
+ Chip.Program(p,44,"rampage",1,nil)
+ eq(charged,-250,"virus writing costs money even for admins")
+ eq(Chip._states[p].bag[1].payload,"rampage","paid programming writes payload")
+ local held=object("Model");held:SetAttribute("ChipId","capacity");held:SetAttribute("ChipKind","capacity");held:SetAttribute("ChipUid",55)
+ local events={}
+ Chip._setup({OwnershipService={ItemHolder=function(item) return item.Parent and p or nil end,DropItem=function() end}},{FireClient=function(_,_,action) table.insert(events,action) end})
+ Chip.PlayHeld(p,held)
+ check(not held.Parent,"F stows physical chip")
+ eq(#Chip._states[p].bag,2,"F adds chip to bag once")
+ check(table.find(events,"opendeck")~=nil,"F opens deck")
+ Chip.PlayHeld(p,held);eq(#Chip._states[p].bag,2,"stowing same destroyed chip cannot duplicate")
+end

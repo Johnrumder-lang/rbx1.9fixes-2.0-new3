@@ -1,0 +1,12 @@
+local attacker=player(20,vec(0,0,0),false);local admin=player(21,vec(2,0,0),true);Players.list={attacker,admin}
+local dealt,sleepForce=0,false
+local remote={FireClient=function() end,FireAllClients=function() end}
+local damage={Protected=function() return false end,ApplyDamage=function(_,_,amount,_,opts) dealt+=amount;check(opts.cyberAttack==true,"hack bypass flag") end,Knock=function() end,Sleep=function(_,_,_,force) sleepForce=force end}
+Chip._setup({DamageService=damage,GoreService={FX=function() end,Sound=function() end}},remote)
+check(Chip.Hit(admin.Character,"burnout",1,attacker,true),"admin receives hack");eq(dealt,45,"admin takes damage")
+check(Chip.Hit(admin.Character,"reset",1,attacker,true),"admin sleep accepted");eq(sleepForce,true,"sleep bypasses God")
+Chip._states[admin]={slots={[1]={id="firewall",tier=2}},bag={},dodgeLeft=0,dodgeRefill=0}
+check(not Chip.Hit(admin.Character,"burnout",2,attacker,true),"admin firewall works")
+Chip._states[attacker]={slots={[1]={id="capacity",tier=3},[2]={id="capacity",tier=1}},bag={},dodgeLeft=0,dodgeRefill=0}
+Chip._public(attacker);eq(attacker:GetAttribute("CyTolBonus"),4,"capacity is 3 + 1");eq(attacker:GetAttribute("CyTol"),24,"capacity display matches bonus")
+print("PASS: "..total.." gameplay regression assertions")

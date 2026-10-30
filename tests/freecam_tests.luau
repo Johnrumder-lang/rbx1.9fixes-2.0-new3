@@ -18,6 +18,7 @@ local Items=(function()
 local Items = {}
 
 Items.Kinds = {
+	package = { name = "DELIVERY PACKAGE" },
 	pistol = { gun = true, name = "PISTOL" },
 	revolver = { gun = true, name = "REVOLVER" },
 	rifle = { gun = true, auto = true, name = "RIFLE" },
@@ -293,7 +294,7 @@ player:SetAttribute("Gift_freecam",true)
 check(Items.Has(player,"freecam"),"freecam gift grants camera")
 check(not Items.IsOwner(player),"freecam gift does not grant admin")
 check(not Items.Has(player,"nuke"),"freecam gift does not grant other powers")
-local Input={TakeWheel=function() return 0 end}
+local Input={TakeWheel=function() return 0 end,IsControlled=function() return false end}
 local Cam={override=nil,fovOffset=0}
 local UI={C={},FONT_TITLE=1,FONT_NUM=1}
 function UI.make(_,p) p.FindFirstChild=function() return nil end;return p end
@@ -594,6 +595,7 @@ end
 
 function FreeCam.Init()
 	UserInputService.InputBegan:Connect(function(io, gameProcessed)
+		if Input.IsControlled() then return end
 		if gameProcessed or io.UserInputType ~= Enum.UserInputType.Keyboard then
 			return
 		end

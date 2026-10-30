@@ -66,6 +66,7 @@ function Jobs.Init()
 		refresh()
 	end)
 	RunService.Heartbeat:Connect(function()
+		if Input.IsControlled() and panel.Visible then close() end
 		if active then
 			local point = active.point
 			local root = active.target and active.target:FindFirstChild("Torso")
@@ -80,6 +81,7 @@ function Jobs.Init()
 		else tracker.Text = cooldown > workspace:GetServerTimeNow() and ("NEXT CONTRACT IN " .. math.ceil(cooldown - workspace:GetServerTimeNow()) .. "s") or "" end
 	end)
 	game:GetService("UserInputService").InputBegan:Connect(function(io) if io.KeyCode == Enum.KeyCode.Escape and panel.Visible then close() end end)
+		if Input.IsControlled() then return end
 	player.CharacterAdded:Connect(close)
 	remote:FireServer("list")
 end

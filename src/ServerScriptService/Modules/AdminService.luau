@@ -85,112 +85,29 @@ end
 ------------------------------------------------------------------------
 
 local Titles = require(Shared:WaitForChild("Titles"))
-local giftStore: DataStore? = nil
-local giftsLoaded: { [Player]: boolean } = {}
-
-local function giftKey(userId: number): string
-	return "g_" .. tostring(userId)
-end
-
-local function giftsOf(player: Player): { powers: { string }, admin: boolean, titles: { string } }
-	local titles = {}
-	for _, t in Titles.List do
-		if t.source == "gift" and player:GetAttribute("GiftTitle_" .. t.id) == true then
-			table.insert(titles, t.id)
-		end
-	end
-	local powers = {}
+local GiftRegistry = require(Modules.GiftRegistry)
+local function applyGifts(player, data)
+	player:SetAttribute("GiftAdmin", data.admin or nil)
+	AdminService.RefreshAdmin(player)
 	for _, power in Items.POWERS do
-		if player:GetAttribute("Gift_" .. power) == true then
-			table.insert(powers, power)
+		local on = table.find(data.powers, power) ~= nil
+		player:SetAttribute("Gift_" .. power, on or nil)
+		if not on and not Items.IsOwner(player) then
+			if power == "fly" then AdminService.SetFlying(player, false)
+			elseif power == "wonder" and AdminService.OnWonder then AdminService.OnWonder(player, false) end
 		end
 	end
-	return { powers = powers, admin = player:GetAttribute("GiftAdmin") == true, titles = titles }
-end
-
-local function saveGifts(player: Player)
-	if not SaveGate.CanSave() then
-		return -- (v2.8) a private server saves nothing
-	end
-	if not giftStore or player.UserId <= 0 then
-		return
-	end
-	local data = giftsOf(player)
-	local ok, err = pcall(function()
-		(giftStore :: DataStore):SetAsync(giftKey(player.UserId), { powers = data.powers, admin = data.admin, titles = data.titles, v = 1 })
-	end)
-	if not ok then
-		warn("[Ragdoll] saving gifts failed:", err)
-	end
-end
-
-local function loadGifts(player: Player)
-	if not giftStore or player.UserId <= 0 then
-		giftsLoaded[player] = true
-		return
-	end
-	local ok, data = pcall(function()
-		return (giftStore :: DataStore):GetAsync(giftKey(player.UserId))
-	end)
-	if ok and typeof(data) == "table" and player.Parent then
-		if typeof(data.powers) == "table" then
-			for _, power in data.powers do
-				if typeof(power) == "string" and table.find(Items.POWERS, power) then
-					player:SetAttribute("Gift_" .. power, true)
-				end
-			end
-		end
-		if data.admin == true then
-			player:SetAttribute("GiftAdmin", true)
-		end
-		if typeof(data.titles) == "table" then
-			for _, id in data.titles do
-				local t = typeof(id) == "string" and Titles.ById[id] or nil
-				if t and t.source == "gift" then
-					player:SetAttribute("GiftTitle_" .. t.id, true)
-				end
-			end
-		end
-	end
-	giftsLoaded[player] = true
+	for _, t in Titles.List do if t.source == "gift" then player:SetAttribute("GiftTitle_" .. t.id, table.find(data.titles, t.id) ~= nil or nil) end end
+	player:SetAttribute("GiftAdmin", data.admin or nil)
 	AdminService.RefreshAdmin(player)
 end
-
--- give / take a power ("admin" = all of them, only the game owner may give that)
 function AdminService.SetGift(by: Player, target: Player, power: string, on: boolean)
-	if Items.IsGameOwner(target) then
-		return
-	end
-	if power == "admin" then
-		if not Items.IsGameOwner(by) then
-			return
-		end
-		target:SetAttribute("GiftAdmin", on or nil)
-		AdminService.RefreshAdmin(target)
-	else
-		if not table.find(Items.POWERS, power) then
-			return
-		end
-		target:SetAttribute("Gift_" .. power, on or nil)
-		if not on then
-			if power == "fly" then
-				AdminService.SetFlying(target, false)
-			elseif power == "wonder" and AdminService.OnWonder then
-				AdminService.OnWonder(target, false)
-			end
-		end
-	end
-	task.spawn(saveGifts, target)
+	local ok, message = GiftRegistry.Set(by, target.UserId, power == "admin" and "admin" or ("power:" .. power), on)
+	if not ok then AdminRemote:FireClient(by, "reseterror", message) end
 end
-
--- (v2.1) a gift title (content creator / sigma / evil / good) given or taken back; saved with the other gifts
-function AdminService.SetGiftTitle(target: Player, id: string, on: boolean)
-	local t = Titles.ById[id]
-	if not t or t.source ~= "gift" then
-		return
-	end
-	target:SetAttribute("GiftTitle_" .. id, on or nil)
-	task.spawn(saveGifts, target)
+function AdminService.SetGiftTitle(by: Player, target: Player, id: string, on: boolean)
+	local ok, message = GiftRegistry.Set(by, target.UserId, "title:" .. id, on)
+	if not ok then AdminRemote:FireClient(by, "reseterror", message) end
 end
 
 -- set by Main: (player, action, value) for "map", "mode", "spawning"
@@ -456,6 +373,11 @@ function AdminService.Init()
 			if target and AdminService.GiveCash then
 				AdminService.GiveCash(target, math.clamp(math.floor(extra), -10000000, 10000000))
 			end
+		elseif action == "wipeplayer" then
+			if typeof(value) == "number" and extra == "WIPE PLAYER" then
+				local ok, message = require(Modules.ProgressEpoch).Wipe(player, value)
+				if not ok then AdminRemote:FireClient(player, "reseterror", message) end
+			end
 		elseif action == "wipeall" then
 			-- (v2.9) only the real game owner may wipe everyone's progress (not a gifted admin)
 			if Items.IsGameOwner(player) and value == "WIPE EVERYONE" then
@@ -477,7 +399,7 @@ function AdminService.Init()
 			local id, on = string.match(extra, "^(%w+):([01])$")
 			local target = Players:GetPlayerByUserId(value)
 			if id and target then
-				AdminService.SetGiftTitle(target, id, on == "1")
+				AdminService.SetGiftTitle(player, target, id, on == "1")
 			end
 		elseif action == "wonder" and typeof(value) == "boolean" then
 			if AdminService.OnWonder then
@@ -508,15 +430,10 @@ function AdminService.Init()
 	-- (v2.0) admins in private servers
 	workspace:SetAttribute("PrivateServer", AdminService.IsPrivateServer() or nil)
 	workspace:SetAttribute("AdminPassId", Config.AdminPassId > 0 and Config.AdminPassId or nil)
-	local okStore, store = pcall(function()
-		return DataStoreService:GetDataStore(Config.GiftStoreName)
-	end)
-	if okStore then
-		giftStore = store
-	end
+	GiftRegistry.Init(applyGifts)
 	local function onPlayer(p: Player)
 		task.spawn(AdminService.RefreshAdmin, p)
-		task.spawn(loadGifts, p) -- (v2.0) the gifts this player was given before
+		task.spawn(GiftRegistry.Load, p) -- (v2.0) the gifts this player was given before
 	end
 	Players.PlayerAdded:Connect(onPlayer)
 	for _, p in Players:GetPlayers() do
@@ -543,7 +460,6 @@ function AdminService.Init()
 	Players.PlayerRemoving:Connect(function(player)
 		laserLast[player] = nil
 		laserFire[player] = nil
-		giftsLoaded[player] = nil
 	end)
 end
 

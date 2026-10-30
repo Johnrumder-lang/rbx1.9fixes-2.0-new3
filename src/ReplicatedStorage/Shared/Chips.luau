@@ -37,7 +37,7 @@ Chips.List = {
 		desc = {
 			"The next bullet that would hit you is dodged. 20 s between charges.",
 			"The next 2 bullets are dodged.",
-			"The next 3 bullets are dodged - and the dodge nudges you aside.",
+			"The next 3 bullets trigger a sidestep into a clear lane.",
 		},
 		info = "Reads the shot before it lands and steps your body out of the line. It works on its own.",
 		ability = "DODGE", cooldown = { 20, 20, 20 }, color = { 90, 220, 255 },
@@ -189,7 +189,7 @@ Chips.Payloads = {
 	{ id = "explode", name = "DETONATE", info = "They blow up." },
 	{ id = "hallucinate", name = "HALLUCINATE", info = "They start seeing things that are not there." },
 	{ id = "rampage", name = "RAMPAGE", info = "They crash out and attack whoever is near." },
-	{ id = "killtarget", name = "KILL A TARGET", info = "They go after one person you choose until one of them is down." },
+	{ id = "killtarget", name = "KILL A TARGET", info = "Choose a target when inserting. After 15 s, the carrier is controlled until the target dies." },
 }
 Chips.PayloadById = {} :: { [string]: { id: string, name: string, info: string } }
 for _, p in Chips.Payloads do

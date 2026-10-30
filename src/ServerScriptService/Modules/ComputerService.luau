@@ -108,31 +108,15 @@ function ComputerService.Init(d: any)
 		end
 		local desk = map and map:FindFirstChild("RipperFrontDesk", true)
 		if desk and desk:IsA("BasePart") then
-			-- against the wall beside the waiting-room desk, facing into the room
-			-- Build a grounded workstation beside the desk; the terminal base rests on its top.
-			for _, z in { 2, -4 } do
-				local pos = desk.Position + Vector3.new(-9, 0, z)
-				local rp = RaycastParams.new()
-				rp.FilterType = Enum.RaycastFilterType.Exclude
-				rp.FilterDescendantsInstances = { desk }
-				local hit = workspace:Raycast(pos + Vector3.new(0, 1, 0), Vector3.new(0, -20, 0), rp)
-				local floorY = hit and hit.Position.Y or desk.Position.Y - 3.45
-				local surface = floorY + 2.8
-				local station = Instance.new("Model")
-				station.Name = "RipperdocWorkstation"
-				local function solid(name, size, at)
-					local part = Instance.new("Part")
-					part.Name, part.Size, part.CFrame, part.Anchored = name, size, at, true
-					part.Color, part.Material = Color3.fromRGB(25, 25, 28), Enum.Material.Metal
-					part.Parent = station
-				end
-				local frame = CFrame.new(pos.X, surface, pos.Z) * CFrame.Angles(0, math.rad(90), 0)
-				solid("Worktop", Vector3.new(4.2, 0.22, 2.8), frame)
-				for _, x in { -1.7, 1.7 } do
-					solid("Pedestal", Vector3.new(0.3, 2.7, 2.1), frame * CFrame.new(x, -1.45, 0))
-				end
-				station.Parent = map
-				buildFixed(frame * CFrame.new(0, 1.41, 0))
+			-- RipperFrontDesk is an invisible interaction marker over the actual counter.
+			-- Place the terminal on that counter, not nine studs out in the waiting room.
+			local at = desk.CFrame * CFrame.new(0, 0, 0.8)
+			local rp = RaycastParams.new()
+			rp.FilterType = Enum.RaycastFilterType.Include
+			rp.FilterDescendantsInstances = { desk.Parent }
+			local hit = workspace:Raycast(at.Position + Vector3.new(0, 1, 0), Vector3.new(0, -4, 0), rp)
+			if hit and hit.Normal.Y > 0.8 then
+				buildFixed(CFrame.new(at.Position.X, hit.Position.Y + 1.3, at.Position.Z) * desk.CFrame.Rotation * CFrame.Angles(0, math.rad(-90), 0))
 			end
 		end
 	end)

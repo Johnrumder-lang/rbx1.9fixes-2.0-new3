@@ -54,7 +54,7 @@ local function theme(inst, props)
 end
 
 -- (v2.0: ONE font for everything in the game - menus, HUD, name tags, signs, prompts, chat: the squared "Sarpanch")
-UI.FONT = Enum.Font.GothamMedium
+UI.FONT = Enum.Font.Sarpanch
 UI.FONT_TITLE = UI.FONT
 UI.FONT_BODY = UI.FONT
 UI.FONT_NUM = UI.FONT
@@ -120,7 +120,9 @@ function UI.button(props: { [string]: any }, onClick: () -> ()): TextButton
 	props.Font = props.Font or UI.FONT_TITLE
 	props.TextSize = props.TextSize or 14
 	local b = UI.make("TextButton", props, { UI.corner(3) })
-	b.Activated:Connect(onClick)
+	b.Activated:Connect(function()
+		if not require(script.Parent.Input).IsControlled() then onClick() end
+	end)
 	return b
 end
 

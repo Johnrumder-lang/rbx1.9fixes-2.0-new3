@@ -1,0 +1,32 @@
+shared.children.TimeScale=TimeScale
+shared.children.HotdogPath={}
+local bodies={}
+modules.children.DamageService={Bodies=function() return bodies end}
+modules.children.GoreService={}
+modules.children.ExplosionService={}
+modules.children.LightingService={}
+modules.children.PropService={}
+local frozenTasks={}
+task.spawn=function(fn) table.insert(frozenTasks,fn) end
+local Super=(function()
+@SUPER@
+end)()
+local clock=1000
+workspace.GetServerTimeNow=function() return clock end
+local source=player(60,vec(0,0,0));local closeP=player(61,vec(5,0,0));local distant=player(62,vec(80,0,0));Players.list={source,closeP,distant}
+for _,p in Players.list do
+ local t=p.Character.children.Torso;t.Anchored=false;t.AssemblyLinearVelocity=vec(2,0,0);t.AssemblyAngularVelocity=vec(0,1,0)
+ p.Character.GetDescendants=function() return {t} end;bodies[p.Character]={}
+end
+Super.LocalFreeze(source,vec(0,0,0),42,2)
+check(closeP.Character.children.Torso.Anchored,"nearby character frozen")
+check(not distant.Character.children.Torso.Anchored,"distant character not frozen")
+check(not source.Character.children.Torso.Anchored,"caster exempt from local freeze")
+eq(closeP.Character:GetAttribute("TemporalFrozenUntil"),1002,"freeze expiry")
+clock=1001;Super.LocalFreeze(source,vec(0,0,0),42,4)
+eq(closeP.Character:GetAttribute("TemporalFrozenUntil"),1005,"overlapping freeze extends expiry")
+eq(#frozenTasks,1,"overlap uses one release owner")
+clock=1006;frozenTasks[1]()
+check(not closeP.Character.children.Torso.Anchored,"freeze restored anchoring")
+eq(closeP.Character.children.Torso.AssemblyLinearVelocity.X,2,"freeze restored velocity")
+print("PASS: "..total.." regression assertions including overlapping local freeze")

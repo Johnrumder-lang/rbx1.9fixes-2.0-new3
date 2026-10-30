@@ -216,7 +216,7 @@ local function step(dt: number)
 	if fieldK() < 1 then
 		aimSens *= Config.SlowMoCamera -- (v2.8) somebody's Sandevistan runs: you turn very slowly
 	end
-	if not free then
+	if not free and not Input.IsControlled() then
 		local d = UserInputService:GetMouseDelta()
 		if d.Magnitude > 2 then
 			lastLook = os.clock()
@@ -233,6 +233,18 @@ local function step(dt: number)
 		end
 	end
 
+	if Input.IsControlled() then
+		local ch = Players.LocalPlayer.Character
+		local root = ch and ch:FindFirstChild("Torso")
+		local goal = ch and ch:GetAttribute("ControlAim")
+		if root and typeof(goal) == "Vector3" then
+			local d = goal - (root.Position + Vector3.new(0, 1.5, 0))
+			if d.Magnitude > 0.01 then
+				CameraController.yaw = math.atan2(-d.X, -d.Z)
+				CameraController.pitch = math.clamp(math.asin(d.Unit.Y), -1.2, 1.2)
+			end
+		end
+	end
 	-- the scope is looked through with the eye (first person view while it is up)
 	local fp = Input.firstPerson or CameraController.scope
 	aimNow += ((CameraController.aiming and 1 or 0) - aimNow) * math.min(1, dt * 12)
@@ -371,6 +383,7 @@ function CameraController.Init()
 	RunService:BindToRenderStep("RagdollSandboxCamera", Enum.RenderPriority.Camera.Value + 1, step)
 
 	UserInputService.InputChanged:Connect(function(io, gameProcessed)
+		if Input.IsControlled() then return end
 		if gameProcessed then
 			return
 		end
