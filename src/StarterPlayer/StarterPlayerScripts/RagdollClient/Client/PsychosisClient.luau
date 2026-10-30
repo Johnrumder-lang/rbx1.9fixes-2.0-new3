@@ -8,6 +8,7 @@ local UI = require(script.Parent.UI)
 local Cam = require(script.Parent.CameraController)
 local Sounds = require(game.ReplicatedStorage.Shared.SoundLibrary)
 local Settings = require(game.ReplicatedStorage.Shared.Settings)
+local Psycho = require(game.ReplicatedStorage.Shared.PsychosisState)
 local Client = {}
 local player = Players.LocalPlayer
 local templates, order = {}, {}
@@ -51,8 +52,10 @@ function Client.Init()
 	local dof = Instance.new("DepthOfFieldEffect"); dof.Name = "NeuralDistance"; dof.Enabled = false; dof.FocusDistance = 8; dof.InFocusRadius = 10; dof.FarIntensity = 0.65; dof.NearIntensity = 0; dof.Parent = Lighting
 	remote.OnClientEvent:Connect(function(action, a, b, c)
 		if action == "remember" then snapshot(a, b)
+		elseif action == "reset" then clear(); episodeEnd, strength = 0, 0
 		elseif action == "clear" then clear()
 		elseif action == "phantom" then
+			if Psycho.Level(player) <= 0 then return end
 			clear()
 			local template = templates[a]
 			if template and typeof(b) == "Vector3" then
@@ -67,6 +70,7 @@ function Client.Init()
 				end
 			end
 		elseif action == "episode" then
+			if Psycho.Level(player) <= 0 then return end
 			strength = a; episodeEnd = workspace:GetServerTimeNow() + b
 			label.Text = ({ "MEMORY INTEGRITY LOST", "THEY REMEMBER YOU", "NEURAL FEEDBACK", "TARGET SIGNAL UNRELIABLE" })[math.random(1, 4)]
 			Sounds.Play("heartbeat", nil, 0.5)
@@ -82,6 +86,7 @@ function Client.Init()
 	RunService.RenderStepped:Connect(function(dt)
 		local now = workspace:GetServerTimeNow()
 		local alive = player.Character and not player.Character:GetAttribute("Dead")
+		if Psycho.Level(player) <= 0 then clear(); episodeEnd, strength = 0, 0; blur.Size = 0 end
 		if ghost and (now >= expires or not alive) then clear() end
 		local fx = now < episodeEnd and alive and strength or 0
 		local reduced = Settings.Get("hallucinations") == false

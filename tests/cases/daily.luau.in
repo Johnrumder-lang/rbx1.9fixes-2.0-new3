@@ -1,0 +1,65 @@
+do
+ local date=100
+ local os={time=function() return date*86400+20 end,clock=function() return 10 end}
+ local profiles={};local records={}
+ local function copy(v) if type(v)~="table" then return v end;local c={};for k,x in v do c[k]=copy(x) end;return c end
+ local backing={UpdateAsync=function(_,key,fn) local v=fn(copy(records[key]));if v then records[key]=fn(copy(records[key])) end;return records[key] end}
+ local Players={PlayerAdded=event(),PlayerRemoving=event(),GetPlayers=function() return {} end}
+ local skins={List={{id="a",name="A"},{id="b",name="B"},{id="c",name="C"},{id="d",name="D"},{id="e",name="E"}}}
+ local cyber={List={{id="optics",name="Optics"},{id="colossus",name="Colossus",admin=true}},ById={optics={name="Optics"},colossus={name="Colossus",admin=true}}}
+ local game={GetService=function(_,n) return n=="Players" and Players or {Shared={WeaponSkins=skins,Cyberware=cyber},Remotes={}} end}
+ local script={Parent={Persist=Persist}}
+ local Instance={new=function() return {OnServerEvent=event(),FireClient=function() end} end}
+ local rollValue=0.9
+ local Random={new=function() return {NextInteger=function(_,a) return a end,NextNumber=function() return rollValue end} end}
+ local task={spawn=function() end}
+ local caseFrame
+ local CFrame={new=function() return caseFrame end}
+ local Daily=(function()
+ @MODULE:DailyRewardService@
+ end)()
+ Daily._setCaseFrame=function(cf) caseFrame=cf end
+ local published=0
+ Daily.Init({SkinService={Refresh=function() published+=1 end}})
+ local p=player(211,vec(0,0,0));local prof=profile();Persist._setup(p,prof,backing)
+ eq(Daily._schedule({date=99,step=2},100),3,"third consecutive day awards day 3")
+ eq(Daily._schedule({date=98,step=5},100),1,"missed day resets cycle")
+ eq(Daily._schedule({date=99,step=7},100),1,"seven-day cycle repeats")
+ local _,allowed=Daily._schedule({date=100,step=3},100);check(not allowed,"one claim per UTC date")
+ check(Daily._claim(p),"first daily claim succeeds")
+ check(prof.cash>=25 and prof.cash<=1000,"cash reward respects 1000 cap")
+ local cash=prof.cash;check(not Daily._claim(p),"same-day duplicate rejected");eq(prof.cash,cash,"duplicate daily claim pays nothing")
+ date+=1;check(Daily._claim(p),"second day claim")
+ date+=1;check(Daily._claim(p),"third day claim");check(prof.owned.a,"day 3 grants one skin");check(not prof.owned.b,"day 3 does not grant extra skins")
+ for _=4,7 do date+=1;check(Daily._claim(p),"next consecutive claim") end
+ check(prof.owned.b and prof.owned.c and prof.owned.d,"day 7 grants three distinct unowned skins")
+ check(not prof.owned.e,"only four milestone skins total")
+ rollValue=0.001;date+=1;check(Daily._claim(p),"new cycle rare roll claim")
+ eq(prof.community.daily.cases[tostring(date)],"optics","rare implant stored as redeemable case, excluding admin implant")
+ eq(prof.cyber.optics,nil,"reward never installs cyberware automatically")
+ rollValue=0.005;local roll=Daily._roll(p,1);eq(roll.implant,nil,"0.5 percent threshold is exclusive")
+ rollValue=1;eq(Daily._roll(p,1).cash,1000,"upper cash bound clamped")
+ local saved=copy(prof);local stale=profile();Persist._setup(p,stale,backing)
+ check(not Daily._claim(p),"rejoin with stale snapshot cannot duplicate persisted daily receipt")
+ Persist._setup(p,saved,backing)
+ date+=2;check(Daily._claim(p),"claim after missed day succeeds");eq(saved.community.daily.step,1,"missed-day claim starts at day 1")
+ local casePlayer=player(212,vec(0,0,0));local caseProfile=profile();Persist._setup(casePlayer,caseProfile,backing)
+ check(Persist.CommitCommunity(casePlayer,function(c) c.daily.cases={voucher="optics"};return true end),"pending case persisted")
+ local made,held,placed=0,0,0
+ local cf=setmetatable({}, {__mul=function(a) return a end})
+ casePlayer.Character.children.Torso.CFrame=cf
+ Daily._setCaseFrame(cf)
+ Daily.Init({SkinService={Refresh=function() end},PropBuilders={implantcase=function() made+=1;return object("Model") end},RipperdocService={LabelCase=function(item,id,tier) item:SetAttribute("CyId",id);eq(tier,1,"reward implant tier is one") end},PropService={OnPlaced=function() placed+=1 end},OwnershipService={Equip=function() held+=1 end}})
+ check(Daily._take(casePlayer,"voucher"),"stored implant case can be collected")
+ eq(caseProfile.community.daily.cases.voucher,nil,"case voucher consumed atomically")
+ eq(held,1,"collected implant case put in hand")
+ check(not Daily._take(casePlayer,"voucher"),"case cannot be collected twice")
+ eq(made,1,"duplicate case request creates no item")
+ check(Persist.CommitCommunity(casePlayer,function(c) c.daily.cases.fail="optics";return true end),"second voucher stored")
+ Persist._setup(casePlayer,caseProfile,{UpdateAsync=function() error("down") end})
+ check(not Daily._take(casePlayer,"fail"),"case is withheld when save fails")
+ eq(caseProfile.community.daily.cases.fail,"optics","failed collection preserves voucher")
+ eq(placed,1,"failed collection never publishes free duplicate case")
+ local noSave=profile();Persist._setup(p,noSave,{UpdateAsync=function() error("down") end})
+ check(not Daily._claim(p),"unavailable storage cannot award daily reward");eq(noSave.cash,10,"failed daily claim pays nothing")
+end

@@ -55,10 +55,10 @@ local Chips=(function()
 --!strict
 -- Chips (v2.9): the catalog of neck chips for the cyberdeck. All names and effects are made up for this game
 -- (a cyberpunk sandbox), like the implants in Shared/Cyberware.
---   * a body has Config.ChipSlots (4) neck slots. A chip sits in one slot.
+--   * a body has Config.ChipSlots (6) neck slots. A chip sits in one slot.
 --   * KINDS:
 --       "combat"   a fast skill that works on its own or on a toggle (REFLEX BUFFER dodges bullets, ZOOM, SCANNER).
---       "net"      a NETRUNNER QUICKHACK: aimed at a person in the netrunner interface (K). It lands only if your
+--       "net"      a NETRUNNER QUICKHACK: aimed at a person in the netrunner interface (F4). It lands only if your
 --                  tier is higher than their FIREWALL tier (a FIREWALL chip). A higher tier does more.
 --       "firewall" passive defence: antivirus + quickhack resistance. A virus / quickhack of this tier or lower bounces.
 --       "capacity" passive: +cyberware tolerance (so more implants fit without cyberpsychosis).
@@ -114,7 +114,7 @@ Chips.List = {
 		info = "An identify routine. Draws a box round everything you see. Toggle it in the cyberdeck (K).",
 		ability = "SCAN", color = { 120, 255, 200 },
 	},
-	-- netrunner quickhacks (aimed at a person in the netrunner interface, K)
+	-- netrunner quickhacks (aimed at a person in the netrunner interface, F4)
 	{
 		id = "burnout", name = "BURNOUT", kind = "net", tiers = 3,
 		price = { 500, 1200, 2600 },
@@ -761,15 +761,11 @@ end
 ------------------------------------------------------------------------
 
 local function psychosisStep(p: Player, st: Implant)
-	if workspace:GetAttribute("PsychosisOff") or ((not st.real or Items.IsOwner(p)) and p:GetAttribute("AdminPsychoEnabled") ~= true) then
-		return -- (admins are immune; an admin who never got an implant has none to go wrong)
-	end
-	local char = alive(p)
-	if not char then
-		return
-	end
-	st.level = math.min(100, st.level + 0.2)
-	p:SetAttribute("SandevistanPsycho", st.level / 100) -- (slowly turning)
+	-- Sandevistan no longer builds a hidden, capacity-independent second meter.
+	local level = require(Shared.PsychosisState).Level(p)
+	st.level = level * 100
+	p:SetAttribute("SandevistanPsycho", nil)
+	if level <= 0 or not st.real or not alive(p) then return end
 	local now = os.clock()
 	if now < st.nextEpisode or st.level < 12 or now < st.activeUntil then
 		return
@@ -896,7 +892,7 @@ Sandy.Grant(p,true,false)
 eq(Sandy._states[p].firstUse,123,"respawn preserves cooling cycle");eq(Sandy._states[p].level,27,"respawn preserves stress");eq(Sandy._states[p].activeUntil,0,"grant cancels old field")
 local Chip=(function()
 --!nonstrict
--- ChipService (v2.9): the cyberdeck. Everything about neck chips (Shared/Chips) - the 4 slots, buying and programming
+-- ChipService (v2.9): the cyberdeck. Everything about neck chips (Shared/Chips) - the 6 slots, buying and programming
 -- them, the netrunner quickhacks, viruses, the REFLEX BUFFER dodge, the FIREWALL, and the Blackwall.
 --   * every player has Config.ChipSlots (4) neck slots and a bag of chips they own. Both are kept in the profile
 --     (Persist) so they come back - videos are the exception (they live for the session only).
@@ -1129,7 +1125,7 @@ local function smite(p: Player)
 end
 
 function ChipService.Install(p: Player, uid: number, slot: number): string?
-	if typeof(slot) ~= "number" or slot < 1 or slot > Config.ChipSlots then
+	if typeof(slot) ~= "number" or slot % 1 ~= 0 or slot < 1 or slot > Config.ChipSlots then
 		return "bad slot"
 	end
 	local st = stOf(p)
@@ -1163,6 +1159,7 @@ function ChipService.Install(p: Player, uid: number, slot: number): string?
 end
 
 function ChipService.Eject(p: Player, slot: number)
+	if typeof(slot) ~= "number" or slot % 1 ~= 0 or slot < 1 or slot > Config.ChipSlots then return end
 	local st = stOf(p)
 	local chip = st.slots[slot]
 	if not chip then
@@ -1230,11 +1227,17 @@ end
 local function chipOfItem(item: Model): Chip?
 	local id = item:GetAttribute("ChipId")
 	if typeof(id) ~= "string" then
-		return nil
+		if item:GetAttribute("Item") ~= "chip" then return nil end
+		-- Spawn-menu blank chips did not have a ChipId and F silently ignored them.
+		local chip = newChip("blank", 1)
+		ChipService.Dress(item, chip)
+		return chip
 	end
+	local definition = Chips.ById[id]
+	if not definition and id ~= "video" and id ~= "virus" then return nil end
 	return {
 		uid = typeof(item:GetAttribute("ChipUid")) == "number" and item:GetAttribute("ChipUid") or nextUid(),
-		id = id, kind = typeof(item:GetAttribute("ChipKind")) == "string" and item:GetAttribute("ChipKind") or "blank",
+		id = id, kind = typeof(item:GetAttribute("ChipKind")) == "string" and item:GetAttribute("ChipKind") or (definition and definition.kind or id),
 		tier = typeof(item:GetAttribute("ChipTier")) == "number" and item:GetAttribute("ChipTier") or 1,
 		name = item:GetAttribute("ChipName"), payload = item:GetAttribute("ChipPayload"),
 		target = item:GetAttribute("ChipTarget"), clip = item:GetAttribute("ChipClip"), trojan = item:GetAttribute("ChipTrojan") == true,
@@ -1515,6 +1518,24 @@ local function victimOf(userId: any): Model?
 	return p and p.Character or nil
 end
 
+local function upload(p, slot, chip, victim, activate)
+	local character = p.Character
+	local targetPlayer = Players:GetPlayerFromCharacter(victim)
+	local untilT = workspace:GetServerTimeNow() + Config.QuickhackDelay
+	p:SetAttribute("ChipUpload_" .. slot, untilT)
+	say(p, "UPLOADING — " .. Config.QuickhackDelay .. " SECONDS. KEEP THE TARGET IN SIGHT.")
+	task.delay(Config.QuickhackDelay, function()
+		if p:GetAttribute("ChipUpload_" .. slot) == untilT then p:SetAttribute("ChipUpload_" .. slot, nil) end
+		if not p.Parent or p.Character ~= character or not victim.Parent or (targetPlayer and targetPlayer.Character ~= victim) then return end
+		local st = states[p]
+		local off = character and character:GetAttribute("ChipsDisabled")
+		if not st or st.slots[slot] ~= chip or (typeof(off) == "number" and off > workspace:GetServerTimeNow()) or not linked(p, victim) then
+			say(p, "UPLOAD CANCELLED — LINK OR CHIP LOST."); return
+		end
+		activate()
+	end)
+end
+
 function ChipService.Quickhack(p: Player, slot: any, targetUserId: any)
 	local st = stOf(p)
 	local chip = typeof(slot) == "number" and st.slots[slot] or nil
@@ -1553,10 +1574,10 @@ function ChipService.Quickhack(p: Player, slot: any, targetUserId: any)
 	p:SetAttribute("ChipCD_" .. slot, workspace:GetServerTimeNow() + (def.cooldown and def.cooldown[chip.tier] or 12))
 	-- the uplink line shown to everybody
 	Remote:FireAllClients("uplink", p.UserId, targetUserId, Chips.Color(def))
-	local landed = ChipService.Hit(victim, effect, chip.tier, p, true)
-	if landed then
-		say(p, def.ability .. " ON " .. string.upper(vp and vp.DisplayName or "TARGET"))
-	end
+	upload(p, slot, chip, victim, function()
+		local landed = ChipService.Hit(victim, effect, chip.tier, p, true)
+		if landed then say(p, def.ability .. " ON " .. string.upper(vp and vp.DisplayName or "TARGET")) end
+	end)
 end
 
 ------------------------------------------------------------------------
@@ -1596,16 +1617,19 @@ function ChipService.Unleash(p: Player, slot: any, targetUserId: any)
 	if typeof(off) == "number" and off > workspace:GetServerTimeNow() then return end
 	cd[p]["bw"] = now + 20
 	p:SetAttribute("ChipCD_" .. slot, workspace:GetServerTimeNow() + 20)
-	ChipService.BlackwallBeam(vt.Position)
-	Remote:FireClient(p, "msg", "BLACKWALL RELEASED.")
-	task.delay(0.8, function()
-		if victim.Parent and not victim:GetAttribute("Dead") then
-			ChipService.Ash(victim)
-			victim:SetAttribute("ForceKill", true)
-			victim:SetAttribute("NoRegrowth", true)
-			deps.DamageService.MarkAttacker(victim, p)
-			deps.DamageService.Kill(victim, "Erased by the Blackwall")
-		end
+	upload(p, slot, chip, victim, function()
+		if not Items.IsOwner(p) then return end
+		ChipService.BlackwallBeam(vt.Position)
+		Remote:FireClient(p, "msg", "BLACKWALL RELEASED.")
+		task.delay(0.8, function()
+			if victim.Parent and not victim:GetAttribute("Dead") then
+				ChipService.Ash(victim)
+				victim:SetAttribute("ForceKill", true)
+				victim:SetAttribute("NoRegrowth", true)
+				deps.DamageService.MarkAttacker(victim, p)
+				deps.DamageService.Kill(victim, "Erased by the Blackwall")
+			end
+		end)
 	end)
 end
 
@@ -1624,7 +1648,7 @@ local function returnChipToBag(p: Player, item: Model, chip: Chip)
 	changed(p)
 end
 
--- F with a chip in hand, nobody grabbed: play its video for yourself
+-- F with any held chip stores it and opens the deck. Videos use the deck PLAY button.
 function ChipService.PlayHeld(p: Player, item: Model)
 	if deps.OwnershipService.ItemHolder(item) ~= p then
 		return
@@ -1845,7 +1869,7 @@ function ChipService.Init(d: any)
 				if typeof(rec) == "table" and typeof(rec.id) == "string" and (Chips.ById[rec.id] or rec.id == "virus") then
 					local chip = newChip(rec.id, typeof(rec.tier) == "number" and rec.tier or 1, { payload = rec.payload, target = rec.target })
 					local slot = typeof(rec.slot) == "number" and rec.slot or 0
-					if slot >= 1 and slot <= Config.ChipSlots and not st.slots[slot] and SLOTTABLE[chip.kind] then
+					if slot % 1 == 0 and slot >= 1 and slot <= Config.ChipSlots and not st.slots[slot] and SLOTTABLE[chip.kind] then
 						st.slots[slot] = chip
 						if chip.id == "dodge" then
 							st.dodgeLeft = chip.tier
@@ -1946,6 +1970,7 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 local Persist = {}
 
 export type Profile = {
+	community: any, -- versioned clans + daily rewards, committed atomically with cash/skins
 	jobsCompleted: number,
 	jobActive: boolean,
 	jobFailedUntil: number,
@@ -1975,6 +2000,15 @@ local function key(p: Player): string
 	return ProgressEpoch.Key(p.UserId)
 end
 
+local function copy(value)
+	if typeof(value) ~= "table" then return value end
+	local result = {}
+	for k, v in value do result[k] = copy(v) end
+	return result
+end
+local function community(prof)
+	return copy(prof.community or { rev = 0, daily = { date = -1, step = 0, cases = {} } })
+end
 local function encode(prof: Profile): any
 	local owned = {}
 	for id in prof.owned do
@@ -1998,7 +2032,7 @@ local function encode(prof: Profile): any
 			table.insert(chips, { id = rec.id, tier = rec.tier, slot = rec.slot, payload = rec.payload, target = rec.target })
 		end
 	end
-	return { v = 1, jobActive = prof.jobActive == true, jobFailedUntil = prof.jobFailedUntil or 0, jobs = prof.jobsCompleted or 0, cash = math.floor(prof.cash), owned = owned, eq = eq, lu = prof.ledgerUnlocked, la = prof.ledgerApples, cy = cy, lk = lk,
+	return { v = 1, community = community(prof), jobActive = prof.jobActive == true, jobFailedUntil = prof.jobFailedUntil or 0, jobs = prof.jobsCompleted or 0, cash = math.floor(prof.cash), owned = owned, eq = eq, lu = prof.ledgerUnlocked, la = prof.ledgerApples, cy = cy, lk = lk,
 		sw = prof.sword, sp = prof.swordProg, ch = chips, codes = table.clone(prof.codes or {}) }
 end
 
@@ -2039,6 +2073,7 @@ local function save(p: Player)
 	local ok, err = pcall(function()
 		(store :: DataStore):UpdateAsync(key(p), function(old)
 			if typeof(old) == "table" then
+				if old.community and (old.community.rev or 0) > (data.community.rev or 0) then return nil end
 				-- Keep redemption receipts when older autosaves race a code claim.
 				for id in old.codes or {} do data.codes[id] = true end
 				-- another server may have saved meanwhile: skins and ledger progress only ever grow
@@ -2108,13 +2143,14 @@ function Persist.ClaimCode(p: Player, code: string, cash: number, skinIds: { str
 	data.codes[code] = true
 	data.cash += cash
 	for _, id in skinIds do if not table.find(data.owned, id) then table.insert(data.owned, id) end end
-	local claimed, ok = false, true
+	local claimed, ok, stale = false, true, false
 	if store and prof.canSave and SaveGate.CanSave() then
 		ok = pcall(function()
 			store:UpdateAsync(key(p), function(old)
 				claimed = false
 				if typeof(old) == "table" and typeof(old.codes) == "table" and old.codes[code] then return nil end
 				if typeof(old) == "table" then
+					if old.community and (old.community.rev or 0) > (data.community.rev or 0) then stale = true; return nil end
 					for id in old.codes or {} do data.codes[id] = true end
 					for _, id in old.owned or {} do if not table.find(data.owned, id) then table.insert(data.owned, id) end end
 				end
@@ -2127,12 +2163,67 @@ function Persist.ClaimCode(p: Player, code: string, cash: number, skinIds: { str
 	end
 	saving[p] = nil
 	if not ok then return false, "Could not save the code reward. Try again." end
+	if stale then return false, "Progress changed in another session. Rejoin to synchronize." end
 	if not claimed then prof.codes[code] = true; return false, "You already redeemed this code." end
 	prof.codes[code] = true
 	prof.cash += cash
 	for _, id in skinIds do prof.owned[id] = true end
 	prof.dirty = true
 	return true, "Reward received."
+end
+
+-- Only server services call this. A single receipt/revision commits rewards or clan costs
+-- with the profile. Duplicate callbacks, concurrent sessions and stale autosaves cannot
+-- replay a daily claim or restore a consumed implant voucher / old clan membership.
+function Persist.Community(p: Player)
+	local prof = profiles[p]
+	return prof and prof.loaded and community(prof)
+end
+function Persist.CommitCommunity(p: Player, change, reserve: number?): (boolean, string)
+	local prof = profiles[p]
+	if not prof or not prof.loaded then return false, "Your profile is still loading." end
+	local studio = game:GetService("RunService"):IsStudio()
+	if not studio and (not SaveGate.CanSave() or not store or not prof.canSave) then return false, "Use a public server with saving available." end
+	if saving[p] then return false, "Your profile is saving; try again shortly." end
+	reserve = reserve or 0
+	if prof.cash < reserve then return false, "You need $" .. reserve .. "." end
+	-- Hold the cost before the first yield so other shops cannot spend it meanwhile.
+	prof.cash -= reserve
+	p:SetAttribute("Cash", math.floor(prof.cash))
+	saving[p] = true
+	local snapshot = encode(prof)
+	local expected = snapshot.community.rev or 0
+	local result, reason, latest = nil, "Could not save. Please retry.", nil
+	local function transform(old)
+		result = nil
+		local prior = typeof(old) == "table" and old or {}
+		latest = prior.community
+		if latest and (latest.rev or 0) ~= expected then reason = "Progress changed in another session. Rejoin to synchronize."; return nil end
+		local data = copy(snapshot)
+		for id in prior.codes or {} do data.codes[id] = true end
+		for _, id in prior.owned or {} do if not table.find(data.owned, id) then table.insert(data.owned, id) end end
+		local accepted, message = change(data.community, data)
+		if not accepted then reason = message or "Request rejected."; return nil end
+		data.community.rev = expected + 1
+		result = data; reason = message or "Saved."
+		return data
+	end
+	local ok = pcall(function()
+		if store and prof.canSave and SaveGate.CanSave() then store:UpdateAsync(key(p), transform)
+		else transform(nil) end
+	end)
+	saving[p] = nil
+	if not ok or not result then
+		prof.cash += reserve
+		p:SetAttribute("Cash", math.floor(prof.cash))
+		return false, ok and reason or "Saving failed. Nothing was claimed or charged."
+	end
+	prof.community = result.community
+	prof.cash += result.cash - snapshot.cash
+	for _, id in result.owned do prof.owned[id] = true end
+	prof.dirty = true
+	p:SetAttribute("Cash", math.floor(prof.cash))
+	return true, reason
 end
 
 function Persist.SaveNow(p: Player)
@@ -2142,7 +2233,7 @@ end
 local function load(p: Player)
 	local prof: Profile = {
 		jobsCompleted = 0, jobActive = false, jobFailedUntil = 0, cash = 0, owned = {}, equipped = {}, ledgerUnlocked = false, ledgerApples = 0, cyber = {}, look = {}, sword = 0, swordProg = 0,
-		chips = {}, codes = {},
+		chips = {}, codes = {}, community = { rev = 0, daily = { date = -1, step = 0, cases = {} } },
 		loaded = false, canSave = false, dirty = false,
 	}
 	profiles[p] = prof
@@ -2156,6 +2247,7 @@ local function load(p: Player)
 					prof.jobsCompleted = typeof(data.jobs) == "number" and math.clamp(math.floor(data.jobs), 0, 1000000) or 0
 					prof.jobActive = data.jobActive == true
 					prof.jobFailedUntil = typeof(data.jobFailedUntil) == "number" and math.clamp(data.jobFailedUntil, 0, os.time() + 180) or 0
+					if typeof(data.community) == "table" then prof.community = data.community end
 					prof.codes = typeof(data.codes) == "table" and data.codes or {}
 					prof.cash = typeof(data.cash) == "number" and math.max(0, data.cash) or 0
 					for _, id in data.owned or {} do
@@ -2230,6 +2322,7 @@ function Persist.Reset(p: Player)
 	prof.swordProg = 0
 	prof.chips = {}
 	prof.codes = {}
+	prof.community = { rev = 0, daily = { date = -1, step = 0, cases = {} } }
 	prof.dirty = true
 	p:SetAttribute("Cash", 0)
 	p:SetAttribute("SkinsOwned", "")
@@ -2273,6 +2366,7 @@ function Persist.Init()
 	end)
 end
 
+Persist._save=save
 Persist._setup=function(p,prof,st) profiles[p]=prof;store=st end
 return Persist
 
@@ -3689,6 +3783,7 @@ end
 do
  local clock=4000;workspace.GetServerTimeNow=function() return clock end
  local game={ReplicatedStorage={Shared={Items=Items,Config=Config}},GetService=function(_,n) return n=="Players" and Players or {} end}
+ local script={Parent={DirectivePath={New=function() return {} end,Clear=function() end}}}
  local task={spawn=function() end}
  local Service=(function()
  --!nonstrict
@@ -3696,18 +3791,20 @@ do
 local Players = game:GetService("Players")
 local Items = require(game.ReplicatedStorage.Shared.Items)
 local Config = require(game.ReplicatedStorage.Shared.Config)
+local Navigation = require(script.Parent.DirectivePath)
 local Service = {}
 local directives, deps = {}, nil
 local function torso(ch) return ch and not ch:GetAttribute("Dead") and ch:FindFirstChild("Torso") end
 local function clear(p)
+	if directives[p] and directives[p].nav then Navigation.Clear(directives[p].nav) end
 	directives[p] = nil
 	p:SetAttribute("ControlTarget", nil)
 	local ch = p.Character
 	if ch then
-		for _, a in { "ControlActive", "ControlGoal", "ControlAim", "ControlMove", "CrashOut" } do ch:SetAttribute(a, nil) end
+		for _, a in { "ControlActive", "ControlGoal", "ControlAim", "ControlMove", "ControlJump", "CrashOut", "CrashOutSource" } do ch:SetAttribute(a, nil) end
 	end
 end
-function Service.Start(p, targetId, seconds)
+function Service.Start(p, targetId, seconds, source)
 	if not p or not p.Parent then return false end
 	if targetId then
 		local target = Players:GetPlayerByUserId(targetId)
@@ -3715,7 +3812,8 @@ function Service.Start(p, targetId, seconds)
 	end
 	local current = directives[p]
 	if current and current.targetId and not targetId then return true end
-	directives[p] = { targetId = targetId, untilT = targetId and math.huge or workspace:GetServerTimeNow() + (seconds or 10), nextGun = 0, nextShot = 0 }
+	if current and current.nav then Navigation.Clear(current.nav) end
+	directives[p] = { nav = Navigation.New(), source = source, targetId = targetId, untilT = targetId and math.huge or workspace:GetServerTimeNow() + (seconds or 10), nextGun = 0, nextShot = 0 }
 	p:SetAttribute("ControlTarget", targetId)
 	if p.Character then p.Character:SetAttribute("ControlActive", true) end
 	return true
@@ -3777,7 +3875,7 @@ function Service.Init(d)
 			for p, rec in directives do if rec.targetId == target.UserId then clear(p) end end
 		end
 	end
-	Players.PlayerRemoving:Connect(function(p) directives[p] = nil end)
+	Players.PlayerRemoving:Connect(clear)
 	task.spawn(function()
 		while true do
 			task.wait(0.1)
@@ -3786,24 +3884,33 @@ function Service.Init(d)
 				local ch, rec = p.Character, directives[p]
 				local root = torso(ch)
 				if not rec and root and (ch:GetAttribute("CrashOut") or 0) > now then
-					Service.Start(p, nil, ch:GetAttribute("CrashOut") - now); rec = directives[p]
+					Service.Start(p, nil, ch:GetAttribute("CrashOut") - now, ch:GetAttribute("CrashOutSource")); rec = directives[p]
 				end
 				if not rec then continue end
-				if now >= rec.untilT then clear(p); continue end
+				if now >= rec.untilT or (rec.source == "psychosis" and (p:GetAttribute("CyPsycho") or 0) <= 0) then clear(p); continue end
 				local tp = rec.targetId and Players:GetPlayerByUserId(rec.targetId)
 				if tp and tp.Character and tp.Character:GetAttribute("Dead") then clear(p); continue end
 				if not root then continue end -- target directives resume after their carrier respawns
 				ch:SetAttribute("ControlActive", true)
-				if (ch:GetAttribute("TemporalFrozenUntil") or 0) > now then ch:SetAttribute("ControlMove", false); continue end
+				if (ch:GetAttribute("TemporalFrozenUntil") or 0) > now then ch:SetAttribute("ControlMove", false); ch:SetAttribute("ControlJump", false); continue end
 				local target
 				if rec.targetId then target = tp and tp.Character else target = nearestTarget(p, root) end
 				local tt = torso(target)
 				local gun, pickup = gunFor(p, root, rec)
 				local goal = pickup or (tt and tt.Position)
-				ch:SetAttribute("ControlGoal", goal)
+				local visible = false
+				if tt then
+					local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Exclude
+					rp.FilterDescendantsInstances = { ch, gun or ch }; rp.RespectCanCollide = true
+					local hit = workspace:Raycast(root.Position, tt.Position - root.Position, rp)
+					visible = not hit or hit.Instance:IsDescendantOf(target)
+				end
+				local waypoint, moving, jump = Navigation.Step(rec.nav, root, goal, pickup and 4 or 18, pickup ~= nil or visible)
+				ch:SetAttribute("ControlGoal", waypoint)
 				ch:SetAttribute("ControlAim", tt and tt.Position or goal)
-				ch:SetAttribute("ControlMove", goal ~= nil and (goal - root.Position).Magnitude > (pickup and 4 or 18))
-				if gun and tt and os.clock() >= rec.nextShot then
+				ch:SetAttribute("ControlMove", moving)
+				ch:SetAttribute("ControlJump", jump)
+				if gun and tt and visible and os.clock() >= rec.nextShot then
 					rec.nextShot = os.clock() + 0.25
 					if (gun:GetAttribute("Ammo") or 0) <= 0 then deps.ItemService.Reload(p, gun)
 					else
@@ -4100,11 +4207,12 @@ do
  local CyberService={}
  local function stOf() return st end
  local function publish() end
+ local function tolerance() return 23 end
  local Cyberware={Load=function(list) local n=0;for _,v in list do n+=v end;return n end}
  function CyberService.AdminPsychosis(p: Player, enabled: boolean)
 	if not Items.IsOwner(p) then return end
 	local st = stOf(p)
-	if not enabled or Cyberware.Load(st.list) <= 0 then st.psycho = 0 end
+	if not enabled or Cyberware.Load(st.list) <= tolerance(p) then st.psycho = 0 end
 	publish(p)
 	p:SetAttribute("CyPsycho", st.psycho > 0 and st.psycho or nil)
 end
@@ -4115,9 +4223,1833 @@ end
  eq(st.psycho,0,"turning immunity off does not inject psychosis")
  st.psycho=.65;CyberService.AdminPsychosis(admin,true)
  eq(st.psycho,0,"no implants clears artificial old stress")
- st.list={pump=1};st.psycho=.2;CyberService.AdminPsychosis(admin,true)
+ st.list={pump=24};st.psycho=.2;CyberService.AdminPsychosis(admin,true)
  eq(st.psycho,.2,"immunity switch preserves real existing stress without increasing it")
+ st.list={pump=23};st.psycho=.7;CyberService.AdminPsychosis(admin,true);eq(st.psycho,0,"exact capacity clears overload for opted-in admin")
  CyberService.AdminPsychosis(admin,false);eq(st.psycho,0,"restoring immunity clears stress")
+end
+do
+ local p=player(201,vec(0,0,0));local prof=profile();prof.cash=3000
+ local record=nil
+ local function copy(v) if type(v)~="table" then return v end;local c={};for k,x in v do c[k]=copy(x) end;return c end
+ local store={UpdateAsync=function(_,key,fn) local first=fn(copy(record));if first then record=fn(copy(record)) end;return copy(record) end}
+ Persist._setup(p,prof,store)
+ local ok=Persist.CommitCommunity(p,function(c) c.clan={id="one"};return true end,2500)
+ check(ok,"clan fee transaction commits");eq(prof.cash,500,"clan fee deducted once on callback retry");eq(record.cash,500,"clan fee and membership saved together")
+ eq(prof.community.clan.id,"one","clan membership applied to current session")
+ local refused=Persist.CommitCommunity(p,function(c) c.clan={id="two"};return true end,2500)
+ check(not refused,"insufficient funds rejected");eq(prof.cash,500,"no negative balance")
+ local current=copy(prof)
+ Persist._setup(p,profile(),store)
+ check(not Persist.CommitCommunity(p,function(c) c.daily.step=7;return true end),"stale session revision rejected")
+ eq(record.community.rev,1,"stale transaction preserves canonical revision")
+ local stale=Persist.Get(p);stale.dirty=true;stale.cash=9999
+ Persist._save(p);eq(record.cash,500,"late autosave cannot overwrite a newer clan fee / daily claim")
+ check(not Persist.ClaimCode(p,"latecode",200,{}),"stale code redemption cannot overwrite new community rewards")
+ check(not stale.codes.latecode,"rejected stale code stays redeemable after reconnect")
+ Persist._setup(p,current,{UpdateAsync=function() error("offline") end})
+ current.cash=3000
+ check(not Persist.CommitCommunity(p,function(c) c.clan=nil;return true end,2500),"failed clan save rejected")
+ eq(current.cash,3000,"failed save refunds reserved cost");eq(current.community.clan.id,"one","failed save preserves membership")
+ Persist._setup(p,current,store)
+ check(not Persist.CommitCommunity(p,function() return false,"denied" end,2500),"validation failure rejects transaction")
+ eq(current.cash,3000,"validation failure refunds reservation")
+end
+do
+ local roster, records={},{}
+ local function copy(v) if type(v)~="table" then return v end;local c={};for k,x in v do c[k]=copy(x) end;return c end
+ local profileStore={UpdateAsync=function(_,key,fn) local next=fn(copy(records[key]));if next then records[key]=fn(copy(records[key])) end;return copy(records[key]) end}
+ local failRoster=false
+ local clanStore={GetAsync=function(_,key) return copy(roster[key]) end,UpdateAsync=function(_,key,fn) if failRoster then error("down") end;local v=fn(copy(roster[key]));if v then roster[key]=fn(copy(roster[key])) end;return copy(roster[key]) end}
+ local seq=0
+ local services={Players=Players,ReplicatedStorage={Remotes={}},RunService={IsStudio=function() return false end},TextService={FilterStringAsync=function(_,text) return {GetNonChatStringForBroadcastAsync=function() return text end} end},HttpService={GenerateGUID=function() seq+=1;return "uuid"..seq end}}
+ local game={GetService=function(_,name) return services[name] end}
+ local script={Parent={Persist=Persist,ProgressEpoch={Value=0,Store=function() return clanStore end},SaveGate={CanSave=function() return true end}}}
+ local Instance={new=function() return {OnServerEvent=event(),FireClient=function() end} end}
+ local task={spawn=function() end}
+ local Clans=(function()
+ --!nonstrict
+-- Canonical clan rosters + versioned profile memberships. Invites are consent-based,
+-- limited to the current server; accepted memberships survive reconnects.
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TextService = game:GetService("TextService")
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+local Persist = require(script.Parent.Persist)
+local Epoch = require(script.Parent.ProgressEpoch)
+local SaveGate = require(script.Parent.SaveGate)
+local Service = { Cost = 2500, MaxMembers = 50 }
+local store, remote
+local memory, invites, busy, last = {}, {}, {}, {}
+local function copy(v)
+	if typeof(v) ~= "table" then return v end
+	local out = {}; for k, value in v do out[k] = copy(value) end; return out
+end
+local function key(id) return "e" .. Epoch.Value .. "_" .. id end
+local function read(id)
+	if not store then return RunService:IsStudio(), copy(memory[id]) end
+	return pcall(function()
+		local options = Instance.new("DataStoreGetOptions"); options.UseCache = false
+		return store:GetAsync(key(id), options)
+	end)
+end
+local function update(id, change)
+	if not store then
+		if not RunService:IsStudio() then return false end
+		local data = change(copy(memory[id])); if data then memory[id] = copy(data) end
+		return true, copy(memory[id])
+	end
+	return pcall(function() return store:UpdateAsync(key(id), change) end)
+end
+local function refOf(p)
+	local c = Persist.Community(p); return c and c.clan
+end
+local function member(p, ref)
+	return { name = p.Name, display = p.DisplayName, token = ref.token }
+end
+local function valid(record, p, ref)
+	local m = record and not record.disbanded and record.members and record.members[tostring(p.UserId)]
+	return m and m.token == ref.token
+end
+local function recover(p, ref)
+	local ok, record = read(ref.id)
+	if not ok then return false end
+	if not record and ref.owner == p.UserId then
+		-- The cost + intent was committed before writing the roster. A disconnect or
+		-- temporary roster failure resumes the same creation without charging twice.
+		ok, record = update(ref.id, function(old)
+			return old or { name = ref.name, owner = p.UserId, members = { [tostring(p.UserId)] = member(p, ref) } }
+		end)
+	end
+	return ok, record
+end
+local function setAttributes(p, ref, record)
+	p:SetAttribute("ClanId", ref and ref.id)
+	p:SetAttribute("ClanName", record and record.name)
+	p:SetAttribute("ClanOwner", record and record.owner)
+end
+local function refresh(p, message)
+	if not p.Parent then return end
+	local c = Persist.Community(p)
+	if not c then return end
+	local ref, record = c.clan, nil
+	if ref then
+		local ok; ok, record = recover(p, ref)
+		if not ok then remote:FireClient(p, "state", { error = "Clan storage unavailable. Retry shortly." }); return end
+		if not valid(record, p, ref) then
+			local removed = Persist.CommitCommunity(p, function(data) data.clan = nil; return true end)
+			if removed then ref = nil end
+			record = nil
+		end
+	end
+	setAttributes(p, record and ref, record)
+	local state = { message = message, cost = Service.Cost, clan = nil, invites = {} }
+	if ref and record then
+		local members = {}
+		for id, m in record.members do table.insert(members, { userId = tonumber(id), name = m.name, display = m.display }) end
+		table.sort(members, function(a, b) return a.userId < b.userId end)
+		state.clan = { id = ref.id, name = record.name, owner = record.owner, members = members }
+	end
+	local now = os.time()
+	for id, invite in invites[p] or {} do
+		if invite.expires <= now then invites[p][id] = nil
+		else table.insert(state.invites, { id = id, name = invite.name, by = invite.by, expires = invite.expires }) end
+	end
+	remote:FireClient(p, "state", state)
+end
+local function publish(id)
+	for _, p in Players:GetPlayers() do
+		local ref = refOf(p)
+		if ref and ref.id == id then task.spawn(refresh, p) end
+	end
+end
+local function filterName(p, raw)
+	if typeof(raw) ~= "string" or #raw > 24 then return nil, "Use 3–24 letters, numbers, spaces, _ or -." end
+	local name = raw:match("^%s*(.-)%s*$"):gsub("%s+", " ")
+	if #name < 3 or not name:match("^[%w _%-]+$") then return nil, "Use 3–24 letters, numbers, spaces, _ or -." end
+	local ok, clean = pcall(function()
+		return TextService:FilterStringAsync(name, p.UserId):GetNonChatStringForBroadcastAsync()
+	end)
+	if not ok then
+		if RunService:IsStudio() then return "Studio Clan" end
+		return nil, "Name filtering unavailable. Please retry."
+	end
+	if clean:find("#", 1, true) or #clean < 3 then return nil, "Choose a different clan name." end
+	return clean
+end
+local function create(p, raw)
+	if refOf(p) then return false, "Leave your current clan first." end
+	local name, why = filterName(p, raw); if not name then return false, why end
+	local ref = { id = HttpService:GenerateGUID(false), token = HttpService:GenerateGUID(false), name = name, owner = p.UserId }
+	local ok, message = Persist.CommitCommunity(p, function(c)
+		if c.clan then return false, "You already belong to a clan." end
+		c.clan = ref; return true, "Clan created for $2,500."
+	end, Service.Cost)
+	if not ok then return false, message end
+	local saved = recover(p, ref)
+	return true, saved and message or "Clan paid for. The roster will finish saving automatically; no second charge."
+end
+local function ownerRecord(p)
+	local ref = refOf(p); if not ref then return nil end
+	local ok, record = recover(p, ref)
+	if ok and valid(record, p, ref) and record.owner == p.UserId then return ref, record end
+	return nil
+end
+local function invite(p, userId)
+	local ref, record = ownerRecord(p)
+	if not ref then return false, "Only the clan leader can invite." end
+	local target = typeof(userId) == "number" and Players:GetPlayerByUserId(userId)
+	if not target or target == p or refOf(target) then return false, "Choose a player in this server who has no clan." end
+	invites[target] = invites[target] or {}
+	local count = 0; for _ in invites[target] do count += 1 end
+	if count >= 10 and not invites[target][ref.id] then return false, "This player already has too many invitations." end
+	invites[target][ref.id] = { by = p.DisplayName, name = record.name, expires = os.time() + 300 }
+	refresh(target); remote:FireClient(target, "invite", record.name)
+	return true, "Invitation sent (valid for 5 minutes)."
+end
+local function accept(p, id)
+	if typeof(id) ~= "string" or refOf(p) then return false, "Leave your current clan first." end
+	local invitation = invites[p] and invites[p][id]
+	if not invitation or invitation.expires <= os.time() then return false, "That invitation expired." end
+	local ref = { id = id, token = HttpService:GenerateGUID(false) }
+	local joined, why = false, "Clan unavailable."
+	local ok, record = update(id, function(old)
+		joined = false
+		if not old or old.disbanded then return nil end
+		local count = 0; for _ in old.members do count += 1 end
+		if count >= Service.MaxMembers then why = "This clan is full."; return nil end
+		old.members[tostring(p.UserId)] = member(p, ref); joined = true; return old
+	end)
+	if not ok or not joined then return false, why end
+	ref.name, ref.owner = record.name, record.owner
+	local saved, message = Persist.CommitCommunity(p, function(c)
+		if c.clan then return false, "You already belong to a clan." end
+		c.clan = ref; return true, "Joined " .. record.name .. "."
+	end)
+	if not saved then
+		update(id, function(old)
+			if old and old.members and old.members[tostring(p.UserId)] and old.members[tostring(p.UserId)].token == ref.token then old.members[tostring(p.UserId)] = nil end
+			return old
+		end)
+		return false, message
+	end
+	invites[p] = nil; publish(id)
+	return true, message
+end
+local function remove(p, action, userId)
+	local ref = refOf(p); if not ref then return false, "You have no clan." end
+	local done, why = false, "Clan unavailable."
+	local targetId = action == "leave" and p.UserId or userId
+	local ok = update(ref.id, function(old)
+		done = false
+		if not valid(old, p, ref) then return nil end
+		if action == "leave" and old.owner == p.UserId then why = "The leader must disband the clan first."; return nil end
+		if action ~= "leave" and old.owner ~= p.UserId then why = "Only the leader can do that."; return nil end
+		if action == "disband" then old.disbanded = true; old.members = {}
+		elseif typeof(targetId) == "number" and targetId ~= old.owner then old.members[tostring(targetId)] = nil
+		else why = "Invalid member."; return nil end
+		done = true; return old
+	end)
+	if not ok or not done then return false, why end
+	publish(ref.id)
+	return true, action == "disband" and "Clan disbanded. The creation cost is not refunded." or "Membership removed."
+end
+function Service.Init()
+	pcall(function() store = Epoch.Store("RagdollClans_v1") end)
+	remote = Instance.new("RemoteEvent"); remote.Name = "Clans"; remote.Parent = ReplicatedStorage.Remotes
+	remote.OnServerEvent:Connect(function(p, action, value)
+		if typeof(action) ~= "string" or busy[p] or os.clock() - (last[p] or -10) < 0.5 then return end
+		last[p] = os.clock()
+		if action == "state" then task.spawn(refresh, p); return end
+		if p.Character and p.Character:GetAttribute("ControlActive") then return end
+		if not RunService:IsStudio() and (not SaveGate.CanSave() or not store) then refresh(p, "Clan changes require a public server with saving available."); return end
+		busy[p] = true
+		local ok, success, message = pcall(function()
+			if action == "create" then return create(p, value)
+			elseif action == "invite" then return invite(p, value)
+			elseif action == "accept" then return accept(p, value)
+			elseif action == "decline" and typeof(value) == "string" then if invites[p] then invites[p][value] = nil end; return true, "Invitation declined."
+			elseif action == "leave" or action == "kick" or action == "disband" then return remove(p, action, value) end
+			return false, "Unknown clan action."
+		end)
+		busy[p] = nil
+		if not ok then warn("[Clans]", success); message = "Clan request failed. Please retry." end
+		refresh(p, message)
+	end)
+	local function added(p) task.spawn(function() if Persist.Wait(p) then refresh(p) end end) end
+	Players.PlayerAdded:Connect(added); for _, p in Players:GetPlayers() do added(p) end
+	Players.PlayerRemoving:Connect(function(p) invites[p], busy[p], last[p] = nil, nil, nil end)
+	task.spawn(function() while true do task.wait(30); for _, p in Players:GetPlayers() do task.spawn(refresh, p) end end end)
+end
+Service._create=create;Service._invite=invite;Service._accept=accept;Service._remove=remove;Service._refresh=refresh
+return Service
+
+ end)()
+ local owner=player(241,vec(0,0,0));owner.Name="Owner"
+ local guest=player(242,vec(0,0,0));guest.Name="Guest"
+ local outsider=player(243,vec(0,0,0));outsider.Name="Outsider"
+ Players.list={owner,guest,outsider}
+ local a,b,c=profile(),profile(),profile();a.cash=3000;b.cash=3000;c.cash=0
+ Persist._setup(owner,a,profileStore);Persist._setup(guest,b,profileStore);Persist._setup(outsider,c,profileStore)
+ Clans.Init()
+ check(not Clans._create(outsider,"Broke Clan"),"cannot create clan without 2500")
+ check(not Clans._create(owner,"<script>"),"clan names validated before storage")
+ check(not Clans._create(owner,"###"),"filtered clan names rejected")
+ check(Clans._create(owner,"Night Runners"),"clan creation succeeds")
+ eq(a.cash,500,"clan creation fee charged once")
+ local id=a.community.clan.id
+ eq(roster["e0_"..id].owner,owner.UserId,"founder is clan leader")
+ check(not Clans._create(owner,"Another Clan"),"one clan per player enforced")
+ check(not Clans._invite(guest,outsider.UserId),"nonleader cannot invite")
+ check(not Clans._accept(guest,id),"joining without invitation rejected")
+ check(Clans._invite(owner,guest.UserId),"leader can invite online player")
+ check(Clans._accept(guest,id),"invited player can accept")
+ eq(b.community.clan.id,id,"accepted membership persisted")
+ check(not Clans._accept(guest,id),"duplicate acceptance rejected")
+ eq(b.cash,3000,"invited player joins free")
+ Clans._refresh(guest);eq(guest:GetAttribute("ClanName"),"Night Runners","accepted membership publishes overhead name")
+ check(not Clans._remove(guest,"kick",owner.UserId),"member cannot kick leader")
+ check(not Clans._remove(owner,"leave"),"leader must explicitly disband")
+ check(Clans._remove(guest,"leave"),"member can leave")
+ Clans._refresh(guest);eq(b.community.clan,nil,"leaving clears persistent membership")
+ eq(guest:GetAttribute("ClanName"),nil,"leaving clears overhead tag")
+ check(Clans._invite(owner,guest.UserId),"reinvite former member")
+ check(Clans._accept(guest,id),"member can rejoin")
+ check(Clans._remove(owner,"kick",guest.UserId),"leader can remove member")
+ Clans._refresh(guest);eq(b.community.clan,nil,"removed member cleared on refresh")
+ check(Clans._remove(owner,"disband"),"leader can disband")
+ Clans._refresh(owner);eq(a.community.clan,nil,"disband clears founder membership")
+ check(roster["e0_"..id].disbanded,"disband tombstone prevents accidental recreation")
+ eq(a.cash,500,"disband does not refund creation fee")
+ failRoster=true
+ check(Clans._create(guest,"Retry Clan"),"roster outage preserves paid creation intent")
+ eq(b.cash,500,"pending clan charged only once")
+ local ref=b.community.clan
+ failRoster=false;Clans._refresh(guest)
+ eq(roster["e0_"..ref.id].name,"Retry Clan","pending creation recovers after outage")
+ eq(b.cash,500,"creation recovery never charges again")
+end
+do
+ local date=100
+ local os={time=function() return date*86400+20 end,clock=function() return 10 end}
+ local profiles={};local records={}
+ local function copy(v) if type(v)~="table" then return v end;local c={};for k,x in v do c[k]=copy(x) end;return c end
+ local backing={UpdateAsync=function(_,key,fn) local v=fn(copy(records[key]));if v then records[key]=fn(copy(records[key])) end;return records[key] end}
+ local Players={PlayerAdded=event(),PlayerRemoving=event(),GetPlayers=function() return {} end}
+ local skins={List={{id="a",name="A"},{id="b",name="B"},{id="c",name="C"},{id="d",name="D"},{id="e",name="E"}}}
+ local cyber={List={{id="optics",name="Optics"},{id="colossus",name="Colossus",admin=true}},ById={optics={name="Optics"},colossus={name="Colossus",admin=true}}}
+ local game={GetService=function(_,n) return n=="Players" and Players or {Shared={WeaponSkins=skins,Cyberware=cyber},Remotes={}} end}
+ local script={Parent={Persist=Persist}}
+ local Instance={new=function() return {OnServerEvent=event(),FireClient=function() end} end}
+ local rollValue=0.9
+ local Random={new=function() return {NextInteger=function(_,a) return a end,NextNumber=function() return rollValue end} end}
+ local task={spawn=function() end}
+ local caseFrame
+ local CFrame={new=function() return caseFrame end}
+ local Daily=(function()
+ --!nonstrict
+-- UTC calendar days; consecutive 7-day cycle. Rewards and claim receipt commit together.
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Persist = require(script.Parent.Persist)
+local WeaponSkins = require(ReplicatedStorage.Shared.WeaponSkins)
+local Cyberware = require(ReplicatedStorage.Shared.Cyberware)
+local Service = {}
+local remote, deps
+local busy, last = {}, {}
+local rng = Random.new()
+local function today() return math.floor(os.time() / 86400) end
+local function schedule(daily, date)
+	if (daily.date or -1) >= date then return daily.step or 1, false end
+	return daily.date == date - 1 and ((daily.step or 0) % 7 + 1) or 1, true
+end
+local function state(p, message)
+	local c = Persist.Community(p)
+	if not c then return end
+	local daily = c.daily or { date = -1, step = 0, cases = {} }
+	local date = today()
+	local step, available = schedule(daily, date)
+	local cases = {}
+	for token, id in daily.cases or {} do
+		local def = Cyberware.ById[id]
+		if def then table.insert(cases, { token = token, name = def.name, id = id }) end
+	end
+	table.sort(cases, function(a, b) return a.token < b.token end)
+	p:SetAttribute("DailyAvailable", available)
+	remote:FireClient(p, "state", { date = date, step = step, available = available, nextAt = (date + 1) * 86400, cases = cases, message = message })
+end
+local function roll(p, step)
+	local prof = Persist.Get(p)
+	local count = step == 3 and 1 or (step == 7 and 3 or 0)
+	local reward = { cash = 0, skins = {}, names = {} }
+	if count > 0 then
+		local pool = {}
+		for _, skin in WeaponSkins.List do if not prof.owned[skin.id] then table.insert(pool, skin) end end
+		for _ = 1, count do
+			if #pool == 0 then reward.cash += 250
+			else
+				local skin = table.remove(pool, rng:NextInteger(1, #pool))
+				table.insert(reward.skins, skin.id); table.insert(reward.names, skin.name)
+			end
+		end
+	else
+		reward.cash = math.clamp(math.floor(25 + rng:NextNumber() ^ 2 * 976), 25, 1000)
+		if rng:NextNumber() < 0.005 then
+			local pool = {}
+			for _, def in Cyberware.List do if not def.admin then table.insert(pool, def) end end
+			if #pool > 0 then reward.implant = pool[rng:NextInteger(1, #pool)].id end
+		end
+	end
+	return reward
+end
+local function claim(p)
+	local c = Persist.Community(p)
+	if not c then return false, "Your profile is loading." end
+	local date = today()
+	local step, available = schedule(c.daily or {}, date)
+	if not available then return false, "Already claimed today. Next reward at 00:00 UTC." end
+	local reward = roll(p, step) -- never reroll inside an UpdateAsync callback
+	local ok, message = Persist.CommitCommunity(p, function(data, profile)
+		data.daily = data.daily or { date = -1, step = 0, cases = {} }
+		local expected, allowed = schedule(data.daily, date)
+		if not allowed or expected ~= step then return false, "Today's reward was already claimed." end
+		data.daily.date, data.daily.step = date, step
+		data.daily.cases = data.daily.cases or {}
+		if reward.implant then data.daily.cases[tostring(date)] = reward.implant end
+		profile.cash += reward.cash
+		for _, id in reward.skins do if not table.find(profile.owned, id) then table.insert(profile.owned, id) end end
+		return true, "Day " .. step .. " claimed."
+	end)
+	if not ok then return false, message end
+	deps.SkinService.Refresh(p)
+	local parts = {}
+	if reward.cash > 0 then table.insert(parts, "$" .. reward.cash) end
+	for _, name in reward.names do table.insert(parts, name) end
+	if reward.implant then table.insert(parts, Cyberware.ById[reward.implant].name .. " case (TAKE below)") end
+	return true, "RECEIVED: " .. table.concat(parts, " + ")
+end
+local function takeCase(p, token)
+	if typeof(token) ~= "string" or #token > 20 then return false, "Invalid reward." end
+	local ch = p.Character
+	local root = ch and not ch:GetAttribute("Dead") and ch:FindFirstChild("Torso")
+	if not root then return false, "Respawn before collecting an implant." end
+	local c = Persist.Community(p)
+	local id = c and c.daily and c.daily.cases and c.daily.cases[token]
+	if not id or not Cyberware.ById[id] or Cyberware.ById[id].admin then return false, "That case is not available." end
+	-- Build off-world before consuming the voucher. No one can take it during saving.
+	local item = deps.PropBuilders.implantcase(root.CFrame * CFrame.new(0, 1, -3))
+	deps.RipperdocService.LabelCase(item, id, 1)
+	local ok, message = Persist.CommitCommunity(p, function(data)
+		if not data.daily or not data.daily.cases or data.daily.cases[token] ~= id then return false, "Case already collected." end
+		data.daily.cases[token] = nil
+		return true, "Tier 1 implant case collected. Another player can install it with F."
+	end)
+	if not ok then item:Destroy(); return false, message end
+	item:SetAttribute("Spawner", p.UserId)
+	item.Parent = workspace:FindFirstChild("Props") or workspace
+	if deps.PropService.OnPlaced then deps.PropService.OnPlaced(item) end
+	if item.PrimaryPart then pcall(function() item.PrimaryPart:SetNetworkOwner(p) end) end
+	if p.Parent and p.Character == ch then deps.OwnershipService.Equip(p, item, "Right") end
+	return true, message
+end
+function Service.Init(d)
+	deps = d
+	remote = Instance.new("RemoteEvent"); remote.Name = "DailyRewards"; remote.Parent = ReplicatedStorage.Remotes
+	remote.OnServerEvent:Connect(function(p, action, value)
+		if busy[p] or typeof(action) ~= "string" or os.clock() - (last[p] or -10) < 0.5 then return end
+		last[p] = os.clock()
+		if action == "state" then state(p); return end
+		if p.Character and p.Character:GetAttribute("ControlActive") then return end
+		busy[p] = true
+		local ok, success, message = pcall(function()
+			if action == "claim" then return claim(p) elseif action == "take" then return takeCase(p, value) end
+			return false, "Unknown reward action."
+		end)
+		busy[p] = nil
+		if not ok then warn("[Daily rewards]", success); message = "Reward request failed. Please retry." end
+		state(p, message)
+		if ok and success then remote:FireClient(p, "claimed") end
+	end)
+	local function added(p) task.spawn(function() if Persist.Wait(p) then state(p) end end) end
+	Players.PlayerAdded:Connect(added); for _, p in Players:GetPlayers() do added(p) end
+	Players.PlayerRemoving:Connect(function(p) busy[p], last[p] = nil, nil end)
+	task.spawn(function() while true do task.wait(30); for _, p in Players:GetPlayers() do state(p) end end end)
+end
+Service._schedule=schedule;Service._claim=claim;Service._roll=roll;Service._take=takeCase
+return Service
+
+ end)()
+ Daily._setCaseFrame=function(cf) caseFrame=cf end
+ local published=0
+ Daily.Init({SkinService={Refresh=function() published+=1 end}})
+ local p=player(211,vec(0,0,0));local prof=profile();Persist._setup(p,prof,backing)
+ eq(Daily._schedule({date=99,step=2},100),3,"third consecutive day awards day 3")
+ eq(Daily._schedule({date=98,step=5},100),1,"missed day resets cycle")
+ eq(Daily._schedule({date=99,step=7},100),1,"seven-day cycle repeats")
+ local _,allowed=Daily._schedule({date=100,step=3},100);check(not allowed,"one claim per UTC date")
+ check(Daily._claim(p),"first daily claim succeeds")
+ check(prof.cash>=25 and prof.cash<=1000,"cash reward respects 1000 cap")
+ local cash=prof.cash;check(not Daily._claim(p),"same-day duplicate rejected");eq(prof.cash,cash,"duplicate daily claim pays nothing")
+ date+=1;check(Daily._claim(p),"second day claim")
+ date+=1;check(Daily._claim(p),"third day claim");check(prof.owned.a,"day 3 grants one skin");check(not prof.owned.b,"day 3 does not grant extra skins")
+ for _=4,7 do date+=1;check(Daily._claim(p),"next consecutive claim") end
+ check(prof.owned.b and prof.owned.c and prof.owned.d,"day 7 grants three distinct unowned skins")
+ check(not prof.owned.e,"only four milestone skins total")
+ rollValue=0.001;date+=1;check(Daily._claim(p),"new cycle rare roll claim")
+ eq(prof.community.daily.cases[tostring(date)],"optics","rare implant stored as redeemable case, excluding admin implant")
+ eq(prof.cyber.optics,nil,"reward never installs cyberware automatically")
+ rollValue=0.005;local roll=Daily._roll(p,1);eq(roll.implant,nil,"0.5 percent threshold is exclusive")
+ rollValue=1;eq(Daily._roll(p,1).cash,1000,"upper cash bound clamped")
+ local saved=copy(prof);local stale=profile();Persist._setup(p,stale,backing)
+ check(not Daily._claim(p),"rejoin with stale snapshot cannot duplicate persisted daily receipt")
+ Persist._setup(p,saved,backing)
+ date+=2;check(Daily._claim(p),"claim after missed day succeeds");eq(saved.community.daily.step,1,"missed-day claim starts at day 1")
+ local casePlayer=player(212,vec(0,0,0));local caseProfile=profile();Persist._setup(casePlayer,caseProfile,backing)
+ check(Persist.CommitCommunity(casePlayer,function(c) c.daily.cases={voucher="optics"};return true end),"pending case persisted")
+ local made,held,placed=0,0,0
+ local cf=setmetatable({}, {__mul=function(a) return a end})
+ casePlayer.Character.children.Torso.CFrame=cf
+ Daily._setCaseFrame(cf)
+ Daily.Init({SkinService={Refresh=function() end},PropBuilders={implantcase=function() made+=1;return object("Model") end},RipperdocService={LabelCase=function(item,id,tier) item:SetAttribute("CyId",id);eq(tier,1,"reward implant tier is one") end},PropService={OnPlaced=function() placed+=1 end},OwnershipService={Equip=function() held+=1 end}})
+ check(Daily._take(casePlayer,"voucher"),"stored implant case can be collected")
+ eq(caseProfile.community.daily.cases.voucher,nil,"case voucher consumed atomically")
+ eq(held,1,"collected implant case put in hand")
+ check(not Daily._take(casePlayer,"voucher"),"case cannot be collected twice")
+ eq(made,1,"duplicate case request creates no item")
+ check(Persist.CommitCommunity(casePlayer,function(c) c.daily.cases.fail="optics";return true end),"second voucher stored")
+ Persist._setup(casePlayer,caseProfile,{UpdateAsync=function() error("down") end})
+ check(not Daily._take(casePlayer,"fail"),"case is withheld when save fails")
+ eq(caseProfile.community.daily.cases.fail,"optics","failed collection preserves voucher")
+ eq(placed,1,"failed collection never publishes free duplicate case")
+ local noSave=profile();Persist._setup(p,noSave,{UpdateAsync=function() error("down") end})
+ check(not Daily._claim(p),"unavailable storage cannot award daily reward");eq(noSave.cash,10,"failed daily claim pays nothing")
+end
+do
+ local clock=10;local os={clock=function() return clock end}
+ local pending={};local task={spawn=function(fn) table.insert(pending,fn) end}
+ local paths={};local fail=false
+ local Enum={PathStatus={Success="ok"},PathWaypointAction={Jump="jump",Walk="walk"}}
+ local waypoints={{Position=vec(0,0,0),Action="walk"},{Position=vec(0,0,12),Action="walk"},{Position=vec(12,0,12),Action="jump"},{Position=vec(12,0,0),Action="walk"}}
+ local pf={CreatePath=function(_,params)
+  eq(params.AgentCanJump,true,"path agent supports jumps")
+  local path={Blocked=event(),Status="ok",destroyed=false}
+  function path:ComputeAsync() if fail then error("unreachable") end end
+  function path:GetWaypoints() return waypoints end
+  function path:Destroy() self.destroyed=true end
+  table.insert(paths,path);return path
+ end}
+ local game={GetService=function() return pf end}
+ local Nav=(function()
+ --!nonstrict
+-- Navigation for the custom ragdoll controller (there is no Humanoid:MoveTo).
+local Pathfinding = game:GetService("PathfindingService")
+local Navigation = {}
+local computing = 0
+local function flatDistance(a, b)
+	local d = a - b
+	return Vector3.new(d.X, 0, d.Z).Magnitude
+end
+local function disconnect(nav)
+	if nav.blocked then nav.blocked:Disconnect(); nav.blocked = nil end
+	if nav.path then nav.path:Destroy(); nav.path = nil end
+end
+function Navigation.Clear(nav)
+	nav.cancelled = true
+	disconnect(nav)
+end
+function Navigation.New()
+	return { index = 1, nextPlan = 0, lastProgress = os.clock() }
+end
+function Navigation.Step(nav, root, destination, stopDistance, canStop)
+	local now = os.clock()
+	if not destination or nav.cancelled then return nil, false, false end
+	local changedBody = nav.body ~= root.Parent
+	if changedBody then
+		disconnect(nav); nav.body = root.Parent; nav.points = nil; nav.destination = nil
+		nav.lastPosition = root.Position; nav.lastProgress = now; nav.generation = (nav.generation or 0) + 1
+	end
+	if canStop and (destination - root.Position).Magnitude <= stopDistance then return destination, false, false end
+	if not nav.lastPosition or flatDistance(root.Position, nav.lastPosition) > 1.2 then
+		nav.lastPosition, nav.lastProgress = root.Position, now
+	end
+	local stuck = now - nav.lastProgress > 1.4
+	local changedGoal = not nav.destination or (destination - nav.destination).Magnitude > 6
+	local needs = changedGoal or nav.replan or stuck or not nav.points or now >= (nav.refreshAt or 0)
+	if needs and not nav.busy and now >= nav.nextPlan and computing < 4 then
+		nav.busy = true; computing += 1
+		nav.nextPlan = now + (stuck and 0.8 or 1.2)
+		nav.destination = destination; nav.refreshAt = now + 2.5; nav.replan = false
+		local generation, body, origin = nav.generation, root.Parent, root.Position
+		local scale = root.Size and math.clamp(root.Size.X / 2, 0.5, 4) or 1
+		task.spawn(function()
+			local path, points
+			local ok = pcall(function()
+				path = Pathfinding:CreatePath({ AgentRadius = 2 * scale, AgentHeight = 5 * scale, AgentCanJump = true, AgentCanClimb = false, WaypointSpacing = 4 })
+				path:ComputeAsync(origin, destination)
+				if path.Status == Enum.PathStatus.Success then points = path:GetWaypoints() end
+			end)
+			computing -= 1; nav.busy = false
+			if nav.cancelled or nav.generation ~= generation or nav.body ~= body then if path then path:Destroy() end; return end
+			disconnect(nav)
+			nav.points = ok and points and #points >= 2 and points or nil
+			nav.index = 2; nav.lastProgress = os.clock(); nav.lastPosition = root.Position
+			if nav.points then
+				nav.path = path
+				nav.blocked = path.Blocked:Connect(function(index) if index >= nav.index then nav.replan = true end end)
+			elseif path then path:Destroy() end
+		end)
+	end
+	local points = nav.points
+	if not points then return nil, false, false end -- no blind walking into a wall while a route is unavailable
+	local waypoint = points[nav.index]
+	while waypoint and flatDistance(root.Position, waypoint.Position) < 2.2 and math.abs(root.Position.Y - waypoint.Position.Y) < 5 do
+		if waypoint.Action == Enum.PathWaypointAction.Jump then nav.jumpUntil = now + 0.7 end
+		nav.index += 1; waypoint = points[nav.index]
+	end
+	if not waypoint then nav.replan = true; return nil, false, false end
+	local jump = waypoint.Action == Enum.PathWaypointAction.Jump or now < (nav.jumpUntil or 0) or (stuck and not nav.replan)
+	return waypoint.Position, true, jump
+end
+return Navigation
+
+ end)()
+ local p=player(221,vec(0,3,0));local root=p.Character.children.Torso
+ local nav=Nav.New();local destination=vec(12,3,0)
+ local goal,moving=Nav.Step(nav,root,destination,18,false)
+ check(not moving and goal==nil,"wait for path instead of walking directly through wall")
+ table.remove(pending,1)()
+ goal,moving=Nav.Step(nav,root,destination,18,false)
+ check(moving,"wall occlusion prevents close-distance early stop")
+ eq(goal.Z,12,"follows detour waypoint around wall")
+ root.Position=vec(0,3,12);local jump;goal,moving,jump=Nav.Step(nav,root,destination,18,false)
+ eq(goal.X,12,"advances path waypoints");check(jump,"jump waypoint reaches controller")
+ local _,stopped=Nav.Step(nav,root,destination,18,true);check(not stopped,"visible target in range stops movement")
+ paths[1].Blocked.callback(nav.index);check(nav.replan,"blocked route requests repath")
+ clock+=2;Nav.Step(nav,root,destination,4,false);eq(#pending,1,"blocked route recalculated with throttle")
+ Nav.Clear(nav);table.remove(pending,1)();check(paths[#paths].destroyed,"cancelled directive disposes asynchronous result")
+ local other=Nav.New();fail=true;Nav.Step(other,root,destination,4,false);table.remove(pending,1)()
+ local _,walk=Nav.Step(other,root,destination,4,false);check(not walk,"failed path does not keep pushing into walls")
+ clock+=3;fail=false;Nav.Step(other,root,destination,4,false);eq(#pending,1,"unreachable destination is retried later")
+ table.remove(pending,1)();Nav.Clear(other)
+end
+do
+ local terrain=object("Terrain");terrain.Archivable=true
+ function terrain:IsA(c) return c=="BasePart" or c=="Terrain" end
+ function terrain:Clone() error("Cannot Clone() Terrain") end
+ local floor=object("Part");floor.Archivable=true;floor.Anchored=true;floor.Transparency=0;floor.Size=vec(100,2,100)
+ function floor:IsA(c) return c=="BasePart" or c=="Part" end
+ floor.CFrame={PointToObjectSpace=function(_,v) return v end}
+ local clone=object("Part");local cloned=0
+ function floor:Clone() cloned+=1;return clone end
+ local vm2={__div=function(a,n) return vec(a.X/n,a.Y/n,a.Z/n) end};setmetatable(floor.Size,vm2)
+ local workspace={GetChildren=function() return {terrain,floor} end}
+ local Ground=(function()
+ --!nonstrict
+-- Ground outside Workspace.Map is copied explicitly, before the detailed environment budget.
+local Ground = {}
+function Ground.Copy(viewport, center, radius)
+	for _, part in workspace:GetChildren() do
+		if part:IsA("BasePart") and not part:IsA("Terrain") and part.Archivable and part.Anchored and part.Transparency < 0.95 and part.Size.X >= 40 and part.Size.Z >= 40 then
+			local localPoint = part.CFrame:PointToObjectSpace(center)
+			local half = part.Size / 2
+			local nearest = Vector3.new(math.clamp(localPoint.X, -half.X, half.X), math.clamp(localPoint.Y, -half.Y, half.Y), math.clamp(localPoint.Z, -half.Z, half.Z))
+			if (localPoint - nearest).Magnitude <= radius then
+				local ok, clone = pcall(function() return part:Clone() end)
+				if ok and clone then
+					for _, child in clone:GetDescendants() do
+						if not (child:IsA("SpecialMesh") or child:IsA("Decal") or child:IsA("Texture") or child:IsA("BlockMesh")) then child:Destroy() end
+					end
+					clone.Anchored, clone.CanCollide, clone.CanTouch, clone.CanQuery = true, false, false, false
+					clone.Parent = viewport
+				end
+			end
+		end
+	end
+end
+return Ground
+
+ end)()
+ local viewport={}
+ Ground.Copy(viewport,vec(0,1,0),80)
+ eq(cloned,1,"replay copies baseplate while skipping Terrain")
+ eq(clone.Parent,viewport,"floor reaches viewport after terrain in child order")
+ eq(clone.CanCollide,false,"replay ground has no live collision")
+ floor.Clone=function() error("instance destroyed") end
+ check(pcall(function() Ground.Copy(viewport,vec(0,1,0),80) end),"individual clone failure cannot abort replay")
+end
+do
+ local clock=0;local os={clock=function() return clock end}
+ local pending={};local task={spawn=function(fn) table.insert(pending,fn) end,wait=function(seconds) clock+=seconds or .1 end}
+ local warn=function() end
+ local Input={freeCursor=false}
+ local player=object("Player");player.children.PlayerGui={}
+ local made,buttons={},{}
+ local UI={make=function(class,props) local o=object(class);for k,v in props do o[k]=v end;table.insert(made,o);return o end}
+ UI.label=function(props) return UI.make("TextLabel",props) end
+ UI.button=function(props,fn) table.insert(buttons,fn);return UI.make("TextButton",props) end
+ local UDim2={new=function() return {} end,fromScale=function() return {} end,fromOffset=function() return {} end}
+ local Vector2={new=function() return {} end}
+ local Enum={TextXAlignment={Right=1},Material={SmoothPlastic=1}}
+ local Instance={new=function(class) return object(class) end}
+ local RunService={RenderStepped={Wait=function() clock+=.1 end}}
+ local groundFails=false
+ local script={Parent={ReplayGround={Copy=function() if groundFails then error("ground failed") end end}}}
+ local workspace={FindFirstChild=function() return nil end}
+ local ReplayCodec={Decode=function() return {{dt=0,cfs={}},{dt=.2,cfs={}}} end,OkCF=function() return false end}
+ local ChipClient={CloseDeck=function() end,CloseComputer=function() end}
+ local RED,CYAN=Color3.new(1,0,0),Color3.new(1,1,1)
+ local messages=0;local function toast() messages+=1 end
+ local Video=(function()
+ local videoToken = 0
+local pendingClip: { [string]: buffer } = {}
+local closeVideo
+
+local function playVideo(meta: any)
+	if typeof(meta.slots) ~= "number" or meta.slots % 1 ~= 0 or meta.slots < 0 or meta.slots > 36 then toast("VIDEO DATA INVALID", RED); return end
+	if closeVideo then closeVideo() end
+	ChipClient.CloseDeck(); ChipClient.CloseComputer()
+	local dataKey = meta.playId or meta.code
+	videoToken += 1
+	local my = videoToken
+	local g = UI.make("ScreenGui", { Name = "VideoPlay", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 35, Parent = player:WaitForChild("PlayerGui") })
+	local function cleanup()
+		if g.Parent then g:Destroy() end
+		if my == videoToken then
+			videoToken += 1; closeVideo = nil; Input.freeCursor = false
+		end
+	end
+	closeVideo = cleanup
+	local bg = UI.make("Frame", { BackgroundColor3 = Color3.fromRGB(2, 3, 4), BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ClipsDescendants = true, Parent = g })
+	local vp = UI.make("ViewportFrame", { BackgroundColor3 = Color3.fromRGB(80, 100, 120), BorderSizePixel = 0, Size = UDim2.fromScale(1, 1),
+		Ambient = Color3.fromRGB(150, 150, 160), LightColor = Color3.fromRGB(255, 250, 240), LightDirection = Vector3.new(-0.4, -1, -0.3), Parent = bg })
+	local title = UI.label({ Text = meta.trojan and "PLAYBACK" or "PLAYBACK", TextSize = 24, TextColor3 = meta.trojan and RED or CYAN, TextStrokeTransparency = 0.4, Position = UDim2.fromOffset(24, 18), Size = UDim2.new(1, -40, 0, 30), ZIndex = 3, Parent = bg })
+	local rec = UI.label({ Text = "● PLAY", TextSize = 20, TextColor3 = RED, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -24, 0, 18), Size = UDim2.fromOffset(120, 28), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 3, Parent = bg })
+	for i = 0, 28 do
+		UI.make("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.85, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 1), Position = UDim2.fromScale(0, i / 29), ZIndex = 4, Parent = bg })
+	end
+	local close = UI.button({ Text = "SKIP", TextSize = 12, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -16), Size = UDim2.fromOffset(100, 26), BackgroundColor3 = Color3.fromRGB(60, 62, 70), ZIndex = 5, Parent = bg }, function()
+		cleanup()
+	end)
+	Input.freeCursor = true
+
+	task.spawn(function()
+		local ok, err = pcall(function()
+			-- wait for the data
+			local t0 = os.clock()
+			while not pendingClip[dataKey] and os.clock() - t0 < 10 and my == videoToken do
+				task.wait(0.05)
+			end
+			local buf = pendingClip[dataKey]
+			pendingClip[dataKey] = nil
+			if my ~= videoToken then
+				if g.Parent then
+					g:Destroy()
+				end
+				return
+			end
+			if not buf then error("Video data did not arrive") end
+			local frames = ReplayCodec.Decode(buf, meta.slots)
+			if #frames < 2 then
+				g:Destroy()
+				return
+			end
+			local cam = Instance.new("Camera")
+			cam.FieldOfView = 70
+			cam.Parent = vp
+			vp.CurrentCamera = cam
+			-- the place round the scene (copied from this machine's own map)
+			local center = typeof(meta.center) == "Vector3" and meta.center or Vector3.zero
+			require(script.Parent.ReplayGround).Copy(vp, center, 120)
+			local map = workspace:FindFirstChild("Map")
+			if map then
+				local op = OverlapParams.new()
+				op.FilterType = Enum.RaycastFilterType.Include
+				op.FilterDescendantsInstances = { map }
+				local okp, parts = pcall(function()
+					return workspace:GetPartBoundsInRadius(center, 120, op)
+				end)
+				if okp then
+					local n = 0
+					for _, p in parts do
+						if n >= 1400 then
+							break
+						end
+						if p:IsA("BasePart") and p.Transparency < 0.95 and not p:IsA("Terrain") then
+							local okc, c = pcall(function()
+								return p:Clone()
+							end)
+							if okc and c then
+								for _, d in c:GetDescendants() do
+									if not (d:IsA("SpecialMesh") or d:IsA("Decal") or d:IsA("Texture") or d:IsA("BlockMesh")) then
+										pcall(function()
+											d:Destroy()
+										end)
+									end
+								end
+								c.Anchored = true
+								c.Parent = vp
+								n += 1
+							end
+							if n % 300 == 0 then
+								task.wait()
+							end
+						end
+					end
+				end
+			end
+			if my ~= videoToken then
+				g:Destroy()
+				return
+			end
+			-- generic bodies for each actor (6 blocks)
+			local actors = typeof(meta.actors) == "table" and meta.actors or {}
+			local pieces = {}
+			local SIZES = { Vector3.new(1.2, 1.2, 1.2), Vector3.new(2, 2, 1), Vector3.new(1, 2, 1), Vector3.new(1, 2, 1), Vector3.new(1, 2, 1), Vector3.new(1, 2, 1) }
+			for ai, a in actors do
+				local function c3(t): Color3
+					return typeof(t) == "table" and Color3.fromRGB(t[1], t[2], t[3]) or Color3.fromRGB(150, 150, 150)
+				end
+				local cols = { c3(a.head), c3(a.torso), c3(a.arm), c3(a.arm), c3(a.leg), c3(a.leg) }
+				for r = 1, 6 do
+					local p = Instance.new("Part")
+					p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+					p.Size = SIZES[r]
+					p.Color = cols[r]
+					p.Material = Enum.Material.SmoothPlastic
+					p.Parent = vp
+					pieces[(ai - 1) * 6 + r] = p
+				end
+			end
+			rec.Visible = true
+			local length = tonumber(meta.length) or frames[#frames].dt
+			local start = os.clock()
+			local fi = 1
+			while my == videoToken do
+				local t = os.clock() - start
+				if t > length then
+					break
+				end
+				while frames[fi + 1] and frames[fi + 1].dt <= t do
+					fi += 1
+				end
+				local fa = frames[fi]
+				local fb = frames[fi + 1] or fa
+				local k = fb.dt > fa.dt and math.clamp((t - fa.dt) / (fb.dt - fa.dt), 0, 1) or 0
+				local camcf = (ReplayCodec.OkCF(fa.cam) and ReplayCodec.OkCF(fb.cam) and fa.cam:Lerp(fb.cam, k)) or fa.cam or fb.cam
+				if camcf then
+					cam.CFrame = camcf
+				end
+				for s = 1, meta.slots do
+					local p = pieces[s]
+					if p then
+						local ca, cb = fa.cfs[s], fb.cfs[s]
+						local cf = (ca and cb and ca:Lerp(cb, k)) or ca or cb
+						if cf then
+							p.CFrame = cf
+							p.Transparency = 0
+						else
+							p.Transparency = 1
+						end
+					end
+				end
+				rec.Visible = (os.clock() % 1) < 0.6
+				RunService.RenderStepped:Wait()
+			end
+			if my == videoToken then
+				title.Text = "END"
+				rec.Visible = false
+				task.wait(1.2)
+				if my == videoToken and g.Parent then
+					g:Destroy()
+				end
+			end
+		end)
+		if not ok and my == videoToken then warn("[Ragdoll video]", err); toast("VIDEO COULD NOT PLAY. TRY AGAIN.", RED) end
+		cleanup()
+	end)
+end
+
+------------------------------------------------------------------------
+
+
+ return {Play=playVideo,Data=pendingClip}
+ end)()
+ local function meta(id) return {code="V1",playId=id,slots=0,actors={},length=.2,center=vec(0,0,0)} end
+ local function run() local fn=table.remove(pending,1);if fn then fn() end end
+ Video.Data.first=buffer.create(1);Video.Play(meta("first"));check(Input.freeCursor,"video opens mouse cursor");run()
+ check(not Input.freeCursor,"normal end restores cursor")
+ eq(made[1].Parent,nil,"normal end closes video overlay")
+ Video.Play(meta("skip"));buttons[#buttons]();check(not Input.freeCursor,"SKIP immediately restores cursor before data arrives");run()
+ groundFails=true;Video.Data.bad=buffer.create(1);Video.Play(meta("bad"));run()
+ check(not Input.freeCursor,"construction error cannot trap player behind overlay");eq(messages,1,"construction error gives visible retry message")
+ groundFails=false
+ Video.Play(meta("timeout"));run();check(not Input.freeCursor,"missing video data closes overlay");eq(messages,2,"missing video data gives retry message")
+ Video.Data.older=buffer.create(1);Video.Play(meta("older"));local oldGui=made[#made-32]
+ Video.Data.newer=buffer.create(1);Video.Play(meta("newer"));run()
+ check(Input.freeCursor,"cancelled older playback does not reset newer cursor")
+ check(Video.Data.newer~=nil,"cancelled playback cannot consume newer play-id data")
+ run();check(not Input.freeCursor,"replacement playback ends cleanly")
+end
+do
+ local sent={}
+ local Remote={OnServerEvent=event(),FireClient=function(_,p,action,a,b) table.insert(sent,{action=action,a=a,b=b}) end}
+ local RunService={Heartbeat=event()}
+ local game={GetService=function(_,name) if name=="Players" then return Players elseif name=="ReplicatedStorage" then return replicated else return RunService end end}
+ local look=vec(0,0,-1)
+ local CFrame={lookAt=function(at) return {Position=at} end}
+ shared.children.ReplayCodec={Encode=function(frames,slots) return {frames=frames,slots=slots} end}
+ local camItems={Kind=function(item) return item.kind end}
+ local oldItems=shared.children.Items;shared.children.Items=camItems
+ local Camera=(function()
+ --!nonstrict
+-- CameraService (v2.9): the VIDEO CAMERA and the chips it makes.
+--   * hold the camera and press F: it starts filming (the red light comes on). From the lens, 10 times a second, it
+--     writes down where the lens looks and where every body near it is (their six parts), like the kill replays do.
+--   * press F again (or let go / die): it stops, and a VIDEO CHIP pops out into your hand. The clip lives for the session.
+--   * a video chip: F in hand plays it full-screen for you (ChipClient, a ViewportFrame scene). Grab somebody + F
+--     (chip in the other hand): they watch it. If the video is a TROJAN (a virus baked in at a computer) the payload
+--     fires when it ends - unless their firewall is high enough.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local ReplayCodec = require(Shared:WaitForChild("ReplayCodec"))
+local Items = require(Shared:WaitForChild("Items"))
+
+local CameraService = {}
+
+local deps: any = {}
+local Remote: RemoteEvent
+
+local STEP = 0.1
+local MAX_TIME = 14
+local MAX_BODIES = 6
+local RADIUS = 120
+local REGIONS = { "Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg" }
+
+type Rec = { item: Model, t0: number, last: number, frames: { any }, seen: { [Model]: boolean }, lensLast: CFrame }
+local recording: { [Player]: Rec } = {}
+type Clip = { buf: buffer, slots: number, actors: { any }, center: Vector3, length: number }
+local clips: { [string]: Clip } = {}
+local counter, playCounter = 0, 0
+
+local function lensCF(item: Model): CFrame?
+	local body = item.PrimaryPart
+	if not body then
+		return nil
+	end
+	local look = body.CFrame.LookVector
+	local eye = body.Position + look * 1.1
+	return CFrame.lookAt(eye, eye + look)
+end
+
+local function recLight(item: Model, on: boolean)
+	local led = item:FindFirstChild("RecLight")
+	if led and led:IsA("BasePart") then
+		led.Color = on and Color3.fromRGB(255, 40, 40) or Color3.fromRGB(80, 20, 20)
+	end
+	item:SetAttribute("Recording", on or nil)
+end
+
+local function bodiesNear(pos: Vector3): { Model }
+	local out = {}
+	for m in deps.DamageService.Bodies() do
+		local t = m.Parent and m:FindFirstChild("Torso")
+		if t and t:IsA("BasePart") and (t.Position - pos).Magnitude < RADIUS then
+			table.insert(out, m)
+		end
+	end
+	return out
+end
+
+function CameraService.Start(p: Player, item: Model)
+	if recording[p] then
+		return
+	end
+	if deps.OwnershipService.ItemHolder(item) ~= p or Items.Kind(item) ~= "camera" then
+		return
+	end
+	local cf = lensCF(item)
+	if not cf then
+		return
+	end
+	recording[p] = { item = item, t0 = os.clock(), last = 0, frames = {}, seen = {}, lensLast = cf }
+	recLight(item, true)
+	deps.GoreService.Sound("click", item.PrimaryPart, 1)
+	Remote:FireClient(p, "cammsg", "RECORDING")
+end
+
+function CameraService.Stop(p: Player)
+	local rec = recording[p]
+	recording[p] = nil
+	if not rec then
+		return
+	end
+	if rec.item.Parent then
+		recLight(rec.item, false)
+	end
+	-- build the actor list and the encoded frames
+	local models = {}
+	for m in rec.seen do
+		if m.Parent then
+			table.insert(models, m)
+		end
+	end
+	if #models == 0 or #rec.frames < 2 then
+		Remote:FireClient(p, "cammsg", "NOTHING TO SAVE")
+		return
+	end
+	local index: { [Model]: number } = {}
+	local actors = {}
+	for i, m in models do
+		index[m] = i
+		local function col(name: string): { number }
+			local part = m:FindFirstChild(name)
+			local c = (part and part:IsA("BasePart")) and part.Color or Color3.fromRGB(150, 150, 150)
+			return { math.floor(c.R * 255), math.floor(c.G * 255), math.floor(c.B * 255) }
+		end
+		local who = Players:GetPlayerFromCharacter(m)
+		table.insert(actors, { name = who and who.DisplayName or m.Name, head = col("Head"), torso = col("Torso"), arm = col("Left Arm"), leg = col("Left Leg") })
+	end
+	local slots = #models * 6
+	local frames: { ReplayCodec.Frame } = {}
+	for _, tk in rec.frames do
+		local f: ReplayCodec.Frame = { dt = tk.dt, cam = tk.cam, cfs = {} }
+		for m, six in tk.bodies do
+			local ai = index[m]
+			if ai then
+				for r = 1, 6 do
+					if six[r] then
+						f.cfs[(ai - 1) * 6 + r] = six[r]
+					end
+				end
+			end
+		end
+		table.insert(frames, f)
+	end
+	counter += 1
+	local code = "V" .. counter
+	local center = rec.frames[#rec.frames].cam and rec.frames[#rec.frames].cam.Position or Vector3.zero
+	clips[code] = { buf = ReplayCodec.Encode(frames, slots), slots = slots, actors = actors, center = center, length = frames[#frames].dt }
+	-- pop the chip out of the camera
+	if rec.item.Parent then
+		deps.GoreService.Sound("magOut", rec.item.PrimaryPart, 0.9)
+	end
+	local label = "VIDEO " .. os.date("%H:%M")
+	if deps.ChipService then
+		deps.ChipService.GiveVideo(p, code, label)
+	end
+	Remote:FireClient(p, "cammsg", "SAVED TO A CHIP (K: YOUR CHIPS)")
+end
+
+function CameraService.Toggle(p: Player, item: Model)
+	if recording[p] then
+		CameraService.Stop(p)
+	else
+		CameraService.Start(p, item)
+	end
+end
+
+-- send a clip to a viewer to play; if trojan, schedule the payload after it ends
+function CameraService.Play(viewer: Player, code: string, trojan: any, attacker: Player?)
+	local clip = clips[code]
+	if not clip then
+		Remote:FireClient(attacker or viewer, "cammsg", "THE CLIP IS GONE.")
+		return
+	end
+	playCounter += 1
+	local playId = code .. ":" .. playCounter
+	Remote:FireClient(viewer, "videostart", { code = code, playId = playId, slots = clip.slots, actors = clip.actors, center = clip.center, length = clip.length, trojan = trojan ~= nil })
+	Remote:FireClient(viewer, "videodata", playId, clip.buf)
+	if trojan and trojan.payload then
+		task.delay(clip.length + Config.VirusArmTime, function()
+			local v = viewer.Character
+			if v and v.Parent and not v:GetAttribute("Dead") and deps.ChipService then
+				deps.ChipService.FirePayload(v, trojan, attacker)
+			end
+		end)
+	end
+end
+
+function CameraService.Init(d: any)
+	deps = d
+	Remote = d.ChipService.Remote
+
+	Remote.OnServerEvent:Connect(function(p, action, a)
+		if action == "cam" and not (p.Character and p.Character:GetAttribute("ControlActive")) then
+			if typeof(a) == "Instance" and a:IsA("Model") and a:IsDescendantOf(workspace) then
+				CameraService.Toggle(p, a)
+			end
+		end
+	end)
+
+	-- a camera that leaves the hand (dropped, dead, let go) stops filming
+	RunService.Heartbeat:Connect(function()
+		local now = os.clock()
+		for p, rec in recording do
+			local stop = false
+			if not p.Parent or not rec.item.Parent or deps.OwnershipService.ItemHolder(rec.item) ~= p then
+				stop = true
+			elseif now - rec.t0 > MAX_TIME then
+				stop = true
+			elseif p.Character and p.Character:GetAttribute("Dead") then
+				stop = true
+			end
+			if stop then
+				task.spawn(CameraService.Stop, p)
+				continue
+			end
+			if now - rec.last >= STEP then
+				rec.last = now
+				local cf = lensCF(rec.item)
+				if cf then
+					rec.lensLast = cf
+					local tick = { dt = now - rec.t0, cam = cf, bodies = {} }
+					local nSeen = 0
+					for _ in rec.seen do
+						nSeen += 1
+					end
+					for _, m in bodiesNear(cf.Position) do
+						local track = rec.seen[m]
+						if not track and nSeen < MAX_BODIES then
+							rec.seen[m] = true
+							nSeen += 1
+							track = true
+						end
+						if track then
+							local six = {}
+							for i, name in REGIONS do
+								local part = m:FindFirstChild(name)
+								if part and part:IsA("BasePart") then
+									six[i] = part.CFrame
+								end
+							end
+							tick.bodies[m] = six
+						end
+					end
+					table.insert(rec.frames, tick)
+				end
+			end
+		end
+	end)
+
+	Players.PlayerRemoving:Connect(function(p)
+		recording[p] = nil
+	end)
+end
+
+CameraService._recording=recording
+return CameraService
+
+ end)()
+ local p=player(251,vec(0,0,0));local item=object("Model");item.kind="camera";item.PrimaryPart=object("Part");item.PrimaryPart.Position=vec(0,3,0);item.PrimaryPart.CFrame={LookVector=look}
+ local clipCode
+ Camera.Init({ChipService={Remote=Remote,GiveVideo=function(_,code) clipCode=code end},OwnershipService={ItemHolder=function() return p end},GoreService={Sound=function() end}})
+ Camera.Start(p,item)
+ check(Camera._recording[p]~=nil,"held camera starts recording")
+ local rec=Camera._recording[p]
+ rec.seen[p.Character]=true
+ rec.frames={{dt=0,cam={Position=vec(0,3,0)},bodies={}},{dt=1,cam={Position=vec(2,3,0)},bodies={}}}
+ Camera.Stop(p)
+ check(clipCode~=nil,"recording stop creates video chip")
+ Camera.Play(p,clipCode,nil,p);local start=sent[#sent-1];local data=sent[#sent]
+ eq(start.action,"videostart","play sends metadata first");eq(data.action,"videodata","play sends frame data")
+ eq(start.a.playId,data.a,"metadata and buffer use same playback ID")
+ eq(start.a.code,clipCode,"playback still refers to saved video chip")
+ local previous=start.a.playId
+ Camera.Play(p,clipCode,nil,p);check(sent[#sent-1].a.playId~=previous,"replaying same chip gets isolated playback ID")
+ shared.children.Items=oldItems
+end
+do
+ local script={Parent={Items=Items,Config=Config}}
+ local State=(function()
+ --!nonstrict
+-- One visible overload value for server effects and client presentation.
+local Items = require(script.Parent.Items)
+local Config = require(script.Parent.Config)
+local State = {}
+function State.Level(p)
+	if workspace:GetAttribute("PsychosisOff") then return 0 end
+	if p:GetAttribute("AdminPsychoEnabled") ~= true and (Items.IsOwner(p) or (p.Character and p.Character:GetAttribute("Colossus"))) then return 0 end
+	local load = p:GetAttribute("CyLoad") or 0
+	local capacity = Config.CyberTolerance + (p:GetAttribute("CyTolBonus") or 0)
+	if load <= capacity then return 0 end
+	return math.clamp(p:GetAttribute("CyPsycho") or 0, 0, 1)
+end
+return State
+
+ end)()
+ local p=player(231,vec(0,0,0))
+ p:SetAttribute("CyLoad",23);p:SetAttribute("CyTolBonus",3);p:SetAttribute("CyPsycho",0)
+ eq(State.Level(p),0,"23 / 23 capacity and zero stress produces no effects")
+ p:SetAttribute("SandevistanPsycho",.9);eq(State.Level(p),0,"hidden Sandevistan meter cannot produce effects at displayed zero")
+ p:SetAttribute("CyPsycho",.6);eq(State.Level(p),0,"capacity boundary suppresses stale residual stress")
+ p:SetAttribute("CyLoad",24);eq(State.Level(p),.6,"overloaded player uses visible psychosis meter")
+ p.admin=true;eq(State.Level(p),0,"immune admin has no effects")
+ p:SetAttribute("AdminPsychoEnabled",true);eq(State.Level(p),.6,"admin opt-in uses real overload")
+ p:SetAttribute("CyLoad",23);eq(State.Level(p),0,"opt-in admin at exact capacity stays safe")
+ p:SetAttribute("CyLoad",24);workspace:SetAttribute("PsychosisOff",true);eq(State.Level(p),0,"global psychosis switch still works")
+ workspace:SetAttribute("PsychosisOff",nil)
+end
+do
+ Config.ChipSlots = 6 -- the neck slots a body has for chips
+Config.QuickhackDelay = 5 -- seconds to upload; the link is checked again before activation
+ local p=player(261,vec(0,0,0));Players.list={p}
+ local events={}
+ local own={ItemHolder=function(item) return item.Parent and p or nil end,DropItem=function() end}
+ Chip._setup({OwnershipService=own},{FireClient=function(_,_,action) table.insert(events,action) end})
+ Chip._states[p]={slots={},bag={},dodgeLeft=0,dodgeRefill=0}
+ local blank=object("Model");blank:SetAttribute("Item","chip")
+ Chip.PlayHeld(p,blank)
+ eq(Chip._states[p].bag[1].id,"blank","spawn-menu chip without metadata stows with F")
+ check(not blank.Parent,"spawned blank chip consumed only once")
+ for _,def in Chips.List do
+  local item=object("Model");item:SetAttribute("Item","chip");item:SetAttribute("ChipId",def.id)
+  local before=#Chip._states[p].bag
+  Chip.PlayHeld(p,item)
+  eq(#Chip._states[p].bag,before+1,"F stows chip kind "..def.id)
+  eq(Chip._states[p].bag[#Chip._states[p].bag].kind,def.kind,"chip catalog supplies missing kind "..def.id)
+ end
+ for _,id in {"video","virus"} do
+  local item=object("Model");item:SetAttribute("Item","chip");item:SetAttribute("ChipId",id)
+  Chip.PlayHeld(p,item);eq(Chip._states[p].bag[#Chip._states[p].bag].id,id,"F accepts "..id.." chips")
+ end
+ local chip=Chip.Give(p,"scan",1)
+ eq(Chip.Install(p,chip.uid,6),nil,"sixth chip slot usable")
+ Chip.Eject(p,6);eq(Chip._states[p].slots[6],nil,"scanner ejects from slot 6")
+ local zoom=Chip.Give(p,"zoom",1);eq(Chip.Install(p,zoom.uid,5),nil,"zoom installs")
+ Chip.Eject(p,5);eq(Chip._states[p].slots[5],nil,"zoom ejects")
+ check(Chip.Install(p,zoom.uid,7)~=nil,"slot 7 rejected")
+ check(Chip.Install(p,zoom.uid,1.5)~=nil,"fractional slot rejected")
+ eq(Config.ChipSlots,6,"equipped chip maximum is six")
+end
+do
+ local queued={};local previousDelay=task.delay;task.delay=function(delay,fn) table.insert(queued,{delay,fn}) end
+ local blocked=false;local previousRay=workspace.Raycast;workspace.Raycast=function() return blocked and {Instance={IsDescendantOf=function() return false end}} or nil end
+ Config.NetRange=160
+ local p=player(271,vec(0,0,0));local victim=player(272,vec(5,0,0),true);Players.list={p,victim}
+ local damage=0
+ Chip._setup({DamageService={Protected=function() return false end,ApplyDamage=function() damage+=1 end},GoreService={FX=function() end,Sound=function() end}},{FireClient=function() end,FireAllClients=function() end})
+ Chip._states[p]={slots={},bag={},dodgeLeft=0,dodgeRefill=0};Chip._states[victim]={slots={},bag={},dodgeLeft=0,dodgeRefill=0}
+ for i=1,5 do Chip._states[p].slots[i]={id="burnout",kind="net",tier=1} end
+ Chip.Quickhack(p,1,victim.UserId)
+ eq(damage,0,"quickhack causes no immediate damage");eq(queued[1][1],5,"quickhack upload takes exactly 5 seconds")
+ queued[1][2]();eq(damage,1,"quickhack activates after upload, including admin target")
+ Chip.Quickhack(p,2,victim.UserId);blocked=true;queued[2][2]();eq(damage,1,"wall at activation cancels upload")
+ blocked=false;Chip.Quickhack(p,3,victim.UserId);Chip.Eject(p,3);queued[3][2]();eq(damage,1,"eject during upload cancels hack")
+ Chip.Quickhack(p,4,victim.UserId);victim.Character=object("Model");queued[4][2]();eq(damage,1,"target respawn cannot receive old upload")
+ task.delay=previousDelay;workspace.Raycast=previousRay
+end
+do
+ local RewardService={}
+ RewardService.CODES = {
+	["netrunner"] = { bundle = true },
+	["chips"] = { bundle = true },
+	["fixes"] = { bundle = true },
+} :: { [string]: { skin: string?, title: string?, bundle: boolean? } }
+
+
+ eq(RewardService.CODES["2.0"],nil,"2.0 code retired")
+ eq(RewardService.CODES.update2,nil,"previous update code retired")
+ check(RewardService.CODES.fixes.bundle,"fixes code enabled")
+ check(RewardService.CODES.netrunner and RewardService.CODES.chips,"requested recent codes retained")
+ local p=player(281,vec(0,0,0));local prof=profile();Persist._setup(p,prof,{UpdateAsync=function(_,_,fn) return fn(nil) end})
+ check(Persist.ClaimCode(p,"fixes",200,{"newskin"}),"fixes bundle can be redeemed")
+ eq(prof.cash,210,"fixes awards 200 cash");check(prof.owned.newskin,"fixes awards a skin")
+ check(not Persist.ClaimCode(p,"fixes",200,{"other"}),"fixes code redeemable once")
+end
+do
+ local player=player(301,vec(0,0,0))
+ local panel=object("Frame")
+ local slotRows={};local deck={slots={false,false,false,false,false,false}}
+ local zoomOn,scanOn=false,false
+ local deckRefresh=nil
+ local events={}
+ local Remote={FireServer=function(_,action,slot) table.insert(events,{action,slot}) end}
+ local UDim2={new=function() return {} end,fromOffset=function() return {} end}
+ local Vector2={new=function() return {} end}
+ local Enum={TextTruncate={AtEnd=1}}
+ local C={amber={},dim={},text={},good={}};local PANEL,PANEL2={},{}
+ local UI={make=function(class,props)
+  local o=object(class);for k,v in props do o[k]=v end
+  if props.Parent and props.Name then props.Parent.children[props.Name]=o end
+  return o
+ end}
+ UI.label=function(props) return UI.make("TextLabel",props) end
+ UI.button=function(props,fn) local b=UI.make("TextButton",props);b.click=fn;return b end
+	-- NECK SLOTS
+	UI.label({ Text = "NECK SLOTS", TextSize = 13, TextColor3 = C.amber, Position = UDim2.fromOffset(16, 44), Size = UDim2.fromOffset(240, 16), Parent = panel })
+	for i = 1, Config.ChipSlots do
+		local row = UI.make("Frame", { Name = "Slot" .. i, BackgroundColor3 = PANEL2, BorderSizePixel = 0, Position = UDim2.fromOffset(16, 64 + (i - 1) * 60), Size = UDim2.fromOffset(250, 56), Parent = panel })
+		UI.make("UIStroke", { Color = Color3.fromRGB(60, 64, 72), Thickness = 1, Parent = row })
+		UI.label({ Name = "Name", Text = "", TextSize = 13, Position = UDim2.fromOffset(8, 3), Size = UDim2.new(1, -16, 0, 18), TextTruncate = Enum.TextTruncate.AtEnd, Parent = row })
+		UI.label({ Name = "Sub", Text = "", TextSize = 10, TextColor3 = C.dim, Position = UDim2.fromOffset(8, 32), Size = UDim2.fromOffset(104, 16), Parent = row })
+		UI.button({ Name = "Act", Text = "", TextSize = 11, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -70, 0, 28), Size = UDim2.fromOffset(56, 22), Parent = row }, function()
+			local chip = deck.slots[i]
+			if chip then
+				if chip.id == "zoom" then
+					zoomOn = not zoomOn
+				elseif chip.id == "scan" then
+					scanOn = not scanOn
+				else
+					Remote:FireServer("eject", i)
+				end
+			end
+			if deckRefresh then
+				deckRefresh()
+			end
+		end)
+		UI.button({ Name = "Eject", Text = "EJECT", TextSize = 11, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 28), Size = UDim2.fromOffset(58, 22), Parent = row }, function()
+			local chip = deck.slots[i]
+			if chip then
+				if chip.id == "scan" then scanOn = false elseif chip.id == "zoom" then zoomOn = false end
+				Remote:FireServer("eject", i)
+			end
+		end)
+		slotRows[i] = row
+	end
+
+
+ local function refresh()
+		-- slots
+		for i = 1, Config.ChipSlots do
+			local row = slotRows[i]
+			local chip = deck.slots[i]
+			local nameL = row:FindFirstChild("Name") :: TextLabel
+			local subL = row:FindFirstChild("Sub") :: TextLabel
+			local act = row:FindFirstChild("Act") :: TextButton
+			act.Visible = typeof(chip) == "table" and (chip.id == "zoom" or chip.id == "scan")
+			row:FindFirstChild("Eject").Visible = typeof(chip) == "table"
+			if chip then
+				local def = Chips.ById[chip.id]
+				nameL.Text = (chip.name or chip.id) .. "  T" .. chip.tier
+				nameL.TextColor3 = def and Chips.Color(def) or C.text
+				subL.Text = def and (def.ability or "PASSIVE") or ""
+				if chip.id == "zoom" then
+					act.Text = zoomOn and "ON" or "OFF"
+					act.BackgroundColor3 = zoomOn and C.good or PANEL2
+				elseif chip.id == "scan" then
+					act.Text = scanOn and "ON" or "OFF"
+					act.BackgroundColor3 = scanOn and C.good or PANEL2
+				elseif chip.id == "dodge" then
+					local left = player:GetAttribute("ChipDodge")
+					subL.Text = "DODGE  " .. (typeof(left) == "number" and (left .. " READY") or "RECHARGING")
+					act.Text = "EJECT"
+					act.BackgroundColor3 = PANEL2
+				else
+					act.Text = "EJECT"
+					act.BackgroundColor3 = PANEL2
+				end
+			else
+				nameL.Text = "- EMPTY -"
+				nameL.TextColor3 = C.dim
+				subL.Text = ""
+				act.Text = ""
+				act.BackgroundColor3 = PANEL
+			end
+		end
+
+ end
+ refresh()
+ for i=1,6 do
+  check(not slotRows[i].children.Act.Visible,"empty serialized slot "..i.." hides toggle safely")
+  check(not slotRows[i].children.Eject.Visible,"empty slot "..i.." hides eject")
+ end
+ deck.slots[5]={id="scan",tier=1};deck.slots[6]={id="zoom",tier=1}
+ refresh()
+ check(slotRows[5].children.Act.Visible and slotRows[5].children.Eject.Visible,"scanner has separate toggle and eject")
+ check(slotRows[6].children.Act.Visible and slotRows[6].children.Eject.Visible,"zoom has separate toggle and eject")
+ slotRows[5].children.Act.click();check(scanOn,"scanner can still toggle on")
+ slotRows[5].children.Eject.click();check(not scanOn,"eject disables scanner effect")
+ eq(events[#events][1],"eject","scanner eject sends removal request");eq(events[#events][2],5,"scanner eject uses correct slot")
+ slotRows[6].children.Act.click();check(zoomOn,"zoom can still toggle on")
+ slotRows[6].children.Eject.click();check(not zoomOn,"eject disables zoom effect")
+ eq(events[#events][2],6,"zoom eject uses sixth slot")
+end
+do
+ local installed={optics=2,titan_L=1}
+ local CyberService={List=function() return table.clone(installed) end}
+ local Shared=shared
+ local Cyberware=(function()
+ --!strict
+-- Cyberware (v2.8): the catalog of implants (all names and brands are made up for this game).
+--   * an implant has 1-3 TIERS; a higher tier does more and costs more (dollars from kills: Config.KillCash).
+--   * it goes into a SLOT of the body (one implant per slot; arms and forearms have a left and a right slot).
+--   * every implant has a LOAD per tier. Your TOLERANCE is Config.CyberTolerance (20). Carry more
+--     load than that and CYBERPSYCHOSIS creeps in: hallucinations that grow, and when somebody touches you or you shoot
+--     somebody you can CRASH OUT (you lose control and shoot at everything that moves). Admins / COLOSSUS: no side effects.
+--   * implants stay in through death and rejoining (Persist) until somebody operates them out. You can never put one in
+--     (or take one out) yourself: the ripperdoc does it (pay, wait your turn, take the syringe, dream), or another player
+--     with an implant case / a ripper kit.
+--   * implants with an ABILITY get a key on the cyber bar (1-9 by default, M > CYBER to change them).
+--   * (v2.8) 18 slot kinds - 20 places in a body (arms and forearms twice) - and 21 implants. (v2.8.1) + BONE MARROW:
+--     REGROWTH CORE (22 implants).
+
+local Cyberware = {}
+
+export type Def = {
+	id: string,
+	name: string,
+	brand: string,
+	slot: string, -- a slot kind (see Slots)
+	tiers: number,
+	price: { number },
+	load: { number },
+	desc: { string }, -- what each tier does (one line each)
+	info: string, -- what it is (the shop's text)
+	ability: string?, -- the label on the cyber bar (nil = passive)
+	cooldown: { number }?, -- s per tier
+	admin: boolean?, -- only admins (or what an admin gifted) may have it
+}
+
+-- the slots of a body (side = the slot exists twice: _L and _R)
+Cyberware.Slots = {
+	{ id = "eyes", name = "OPTICS", side = false },
+	{ id = "brain", name = "CORTEX", side = false },
+	{ id = "os", name = "OPERATING SYSTEM", side = false },
+	{ id = "spine", name = "SPINE", side = false },
+	{ id = "chest", name = "CHEST", side = false },
+	{ id = "arm", name = "ARM", side = true },
+	{ id = "fore", name = "FOREARM", side = true },
+	{ id = "palms", name = "PALMS", side = false },
+	{ id = "legs", name = "LEGS", side = false },
+	{ id = "nerves", name = "NERVOUS SYSTEM", side = false },
+	{ id = "skin", name = "SKIN", side = false },
+	{ id = "dermis", name = "DERMIS", side = false },
+	{ id = "subdermal", name = "SUBDERMAL", side = false },
+	{ id = "frame", name = "SKELETON", side = false },
+	{ id = "blood", name = "CIRCULATION", side = false },
+	{ id = "lungs", name = "LUNGS", side = false },
+	{ id = "ears", name = "EARS", side = false },
+	{ id = "marrow", name = "BONE MARROW", side = false },
+	{ id = "stance", name = "STANCE", side = false }, -- (v2.8.2)
+	{ id = "shell", name = "ARMOUR SHELL", side = false }, -- (v2.8.2)
+	{ id = "core", name = "PROTOCOL", side = false },
+}
+
+Cyberware.List = {
+	{
+		id = "optics", name = "WARDEN OPTICS", brand = "HALDEN OPTICS", slot = "eyes", tiers = 3,
+		price = { 250, 700, 1600 }, load = { 1, 2, 3 },
+		desc = {
+			"Marks the target at your crosshair: you see it through walls, with its distance.",
+			"Aiming a gun pulls your aim onto the marked target.",
+			"Hard lock: your aim stays on it. Red combat vision (toggle with the key held).",
+		},
+		info = "Replacement eyes with a targeting lens. One lens at tier 1, three at tier 3.",
+		ability = "LOCK", cooldown = { 0.4, 0.4, 0.4 },
+	},
+	{
+		id = "cortex", name = "HUNTER CORTEX", brand = "GRAYLINE NEURAL", slot = "brain", tiers = 3,
+		price = { 300, 800, 1800 }, load = { 1, 2, 3 },
+		desc = {
+			"Pick one person (crosshair): you see them through walls, anywhere.",
+			"An arrow on your screen always points to them, with the distance.",
+			"Your hits on them do 25% more damage.",
+		},
+		info = "A hunting program behind the temples. One target at a time.",
+		ability = "HUNT", cooldown = { 2, 2, 2 },
+	},
+	{
+		id = "sandevistan", name = "SANDEVISTAN", brand = "SPINE OS", slot = "os", tiers = 1,
+		price = { 4000 }, load = { 5 },
+		desc = { "Double-tap SHIFT: the world runs in slow motion for a few seconds while you do not." },
+		info = "The spine implant that slows the world. Burns out if you use it twice in a row.",
+	},
+	{
+		id = "keel", name = "KEEL SPINE", brand = "MERIDIAN BIOWORKS", slot = "spine", tiers = 3,
+		price = { 200, 550, 1200 }, load = { 1, 1, 2 },
+		desc = {
+			"Better balance: you stay on your feet more often, you get up faster.",
+			"Shots to the body no longer knock you over.",
+			"Hits knock you down for a third of the time.",
+		},
+		info = "Gyroscopic vertebrae down the lower back.",
+	},
+	{
+		id = "aegis", name = "AEGIS CORE", brand = "TENRYU SYSTEMS", slot = "chest", tiers = 3,
+		price = { 350, 900, 2000 }, load = { 2, 2, 3 },
+		desc = { "A shield of 30 that takes damage first.", "Shield 60.", "Shield 100, recharges faster." },
+		info = "A field emitter in the chest. It recharges after a few seconds without being hit.",
+	},
+	{
+		id = "titan", name = "TITAN FRAME ARM", brand = "VOSS KINETIC", slot = "arm", tiers = 3,
+		price = { 300, 750, 1700 }, load = { 1, 2, 3 },
+		desc = {
+			"A full metal arm: +20% durability, health and power.",
+			"+35% durability, health and power.",
+			"+50% durability, health and power; it can not be cut off.",
+		},
+		info = "Replaces the whole arm. Every one is built different: random model, random finish.",
+	},
+	{
+		id = "howler", name = "HOWLER ARM CANNON", brand = "PALE HORSE ARMORY", slot = "fore", tiers = 3,
+		price = { 600, 1400, 2800 }, load = { 2, 3, 4 },
+		desc = { "Fires a shell from the forearm (6 s).", "4 s between shots, bigger shells.", "2.5 s, heavy shells." },
+		info = "A cannon built into the forearm. Shell (explosive / shock / slug) and colour: M > CYBERWARE.",
+		ability = "CANNON", cooldown = { 6, 4, 2.5 },
+	},
+	{
+		id = "shiftgun", name = "SHIFTGUN FOREARM", brand = "PALE HORSE ARMORY", slot = "fore", tiers = 3,
+		price = { 500, 1200, 2400 }, load = { 2, 3, 3 },
+		desc = {
+			"The forearm opens into a gun: F fires while the hand is empty.",
+			"Faster fire, more damage.",
+			"Full auto, armour-piercing.",
+		},
+		info = "A gun that folds into your arm. Press its key to open / close it.",
+		ability = "ARM GUN", cooldown = { 1, 1, 1 },
+	},
+	{
+		id = "sickles", name = "SICKLE BLADES", brand = "VOSS KINETIC", slot = "fore", tiers = 3,
+		price = { 550, 1300, 2600 }, load = { 2, 3, 3 },
+		desc = {
+			"Blades out of the forearm: your punches slash (bleeding).",
+			"They cut limbs off.",
+			"Longer blades; a jump while they are out is a lunge.",
+		},
+		info = "Folding blades along the forearm. Press their key to open / close them.",
+		ability = "BLADES", cooldown = { 1, 1, 1 },
+	},
+	{
+		id = "lodestone", name = "LODESTONE PALMS", brand = "VOSS KINETIC", slot = "palms", tiers = 3,
+		price = { 250, 650, 1500 }, load = { 1, 1, 2 },
+		desc = {
+			"Electromagnets: pull the item you look at to you (30 studs). The locked item shows on screen.",
+			"60 studs.",
+			"90 studs - and it rips a gun out of somebody's hand.",
+		},
+		info = "Coils in both palms.",
+		ability = "PULL", cooldown = { 3, 2, 1.5 },
+	},
+	{
+		id = "strider", name = "STRIDER LEGS", brand = "VOSS KINETIC", slot = "legs", tiers = 3,
+		price = { 300, 750, 1600 }, load = { 1, 2, 3 },
+		desc = {
+			"+12% speed, +15% jump, -30% fall damage.",
+			"+22% speed, +30% jump, -55% fall damage.",
+			"+32% speed, +50% jump, -80% fall damage.",
+		},
+		info = "Reinforced legs with pistons in the calves.",
+	},
+	{
+		id = "sentry", name = "SENTRY REFLEX", brand = "GRAYLINE NEURAL", slot = "nerves", tiers = 3,
+		price = { 300, 800, 1900 }, load = { 1, 2, 3 },
+		desc = {
+			"Somebody shoots at you: a red marker shows where from.",
+			"Your body turns towards the shooter on its own.",
+			"Your gun arm snaps onto the shooter too.",
+		},
+		info = "Threat detection wired into the spinal cord.",
+	},
+	{
+		id = "ghostskin", name = "GHOSTSKIN", brand = "HALDEN OPTICS", slot = "skin", tiers = 3,
+		price = { 700, 1500, 3000 }, load = { 2, 3, 3 },
+		desc = { "Invisible for 6 s.", "10 s.", "15 s." },
+		info = "Light-bending skin. Attacking shows you for a moment.",
+		ability = "CLOAK", cooldown = { 30, 25, 20 },
+	},
+	{
+		id = "dermis", name = "STATIC DERMIS", brand = "TENRYU SYSTEMS", slot = "dermis", tiers = 3,
+		price = { 300, 750, 1600 }, load = { 1, 2, 2 },
+		desc = {
+			"Whoever hurts you close up (punch, kick, blade) gets a shock.",
+			"A stronger shock that knocks them down.",
+			"It throws them back.",
+		},
+		info = "Capacitors under the skin.",
+	},
+	{
+		id = "blastweave", name = "BLASTWEAVE", brand = "MERIDIAN BIOWORKS", slot = "subdermal", tiers = 3,
+		price = { 300, 750, 1600 }, load = { 1, 2, 2 },
+		desc = { "-35% explosion damage, -30% blast push.", "-55% / -50%.", "-70% / -65%." },
+		info = "A woven armour layer under the skin.",
+	},
+	{
+		id = "bulk", name = "BULK FRAME", brand = "MERIDIAN BIOWORKS", slot = "frame", tiers = 3,
+		price = { 400, 1000, 2200 }, load = { 2, 3, 4 },
+		desc = { "You are 12% bigger and take 13% less damage.", "22% bigger, 25% less damage.", "35% bigger, 35% less damage." },
+		info = "A lengthened, reinforced skeleton.",
+	},
+	{
+		id = "pump", name = "IRONHEART PUMP", brand = "MERIDIAN BIOWORKS", slot = "blood", tiers = 3,
+		price = { 350, 850, 1800 }, load = { 1, 2, 3 },
+		desc = {
+			"Wounds bleed 40% less, and you heal sooner after a hit.",
+			"Bleeding -60%, healing twice as fast.",
+			"Bleeding -80%, healing much faster - and open wounds close by themselves.",
+		},
+		info = "A second heart that keeps the pressure up and the blood in.",
+	},
+	{
+		id = "lungs", name = "DEEPWATER LUNGS", brand = "TENRYU SYSTEMS", slot = "lungs", tiers = 3,
+		price = { 200, 500, 1100 }, load = { 1, 1, 2 },
+		desc = { "You hold your breath twice as long.", "Four times as long.", "You never drown, and the virus can not get in." },
+		info = "Oxygen reservoirs and filters behind the ribs.",
+	},
+	{
+		id = "echo", name = "ECHO EARS", brand = "HALDEN OPTICS", slot = "ears", tiers = 3,
+		price = { 250, 600, 1300 }, load = { 1, 1, 2 },
+		desc = {
+			"A radar of footsteps: players moving within 45 studs show on it.",
+			"75 studs - bots and NPCs too.",
+			"120 studs, and it shows who is above or below you.",
+		},
+		info = "Microphones in both ears and a map of the sounds in the corner of your eye.",
+	},
+	{
+		id = "regrowth", name = "REGROWTH CORE", brand = "MERIDIAN BIOWORKS", slot = "marrow", tiers = 3,
+		price = { 450, 1100, 2600 }, load = { 2, 3, 4 },
+		desc = {
+			"Regenerates 2 HP/s per intact limb; broken bones mend in 10-16 s.",
+			"Regenerates 4 HP/s, closes bleeding, regrows arms and legs in 8-12 s.",
+			"Regenerates 7 HP/s; limbs in 5-8 s. Lost head or torso recovers in 10-16 s, once per 120 s.",
+		},
+		info = "Engineered marrow repairs tissue, seals bleeding and rebuilds missing limbs.",
+	},
+	-- (v2.8.2)
+	{
+		id = "anchor", name = "BEDROCK STABILIZER", brand = "VOSS KINETIC", slot = "stance", tiers = 3,
+		price = { 500, 1200, 2600 }, load = { 2, 3, 4 },
+		desc = {
+			"Kicks, punches, shots and blades never knock you over, and barely push you: a drop kick and you just stand there.",
+			"Things and cars that crash into you do not either.",
+			"Nothing does - not even an explosion or a hard landing. You stand where you stand.",
+		},
+		info = "Gyro-stabilised hips and locking knee joints. You still feel every hit - you just do not fall.",
+	},
+	{
+		id = "bastion", name = "BASTION SHELL", brand = "PALE HORSE ARMORY", slot = "shell", tiers = 3,
+		price = { 650, 1500, 3000 }, load = { 2, 3, 4 },
+		desc = {
+			"When somebody shoots at you, metal plates fold out over your body for 6 s: bullets do 50% less.",
+			"8 s, bullets do 70% less.",
+			"10 s, bullets do 90% less. It has gaps: the head, the sides under the arms and the backs of the legs.",
+		},
+		info = "Folded plates along the spine and the limbs. They close round you the moment a threat is seen.",
+	},
+	-- admins only (or gifted by one)
+	{
+		id = "zerohour", name = "ZERO HOUR", brand = "ADMIN", slot = "core", tiers = 1,
+		price = { 0 }, load = { 0 },
+		desc = { "Freezes every other player and every bot on the server for 8 s." },
+		info = "Admins only.",
+		ability = "FREEZE", cooldown = { 20 },
+		admin = true,
+	},
+	{
+		id = "colossus", name = "COLOSSUS PROTOCOL", brand = "ADMIN", slot = "core", tiers = 1,
+		price = { 0 }, load = { 0 },
+		desc = { "Three times your size. Normal bullets do nothing, only big blasts, cars and nukes knock you over. Every best implant, a Sandevistan, no side effects." },
+		info = "Admins only.",
+		admin = true,
+	},
+} :: { Def }
+
+Cyberware.ById = {} :: { [string]: Def }
+for _, d in Cyberware.List do
+	Cyberware.ById[d.id] = d
+end
+
+Cyberware.SlotName = {} :: { [string]: string }
+for _, s in Cyberware.Slots do
+	Cyberware.SlotName[s.id] = s.name
+end
+
+-- the slot key an implant takes ("arm_L" / "arm_R" for the sided ones)
+function Cyberware.SlotKey(def: Def, side: string?): string
+	for _, s in Cyberware.Slots do
+		if s.id == def.slot and s.side then
+			return def.slot .. "_" .. (side == "L" and "L" or "R")
+		end
+	end
+	return def.slot
+end
+
+-- a key in a body's implant list: "<id>" or "<id>_L" / "<id>_R" (sided)
+function Cyberware.Key(id: string, side: string?): string
+	local d = Cyberware.ById[id]
+	if d then
+		for _, s in Cyberware.Slots do
+			if s.id == d.slot and s.side then
+				return id .. "_" .. (side == "L" and "L" or "R")
+			end
+		end
+	end
+	return id
+end
+
+function Cyberware.Split(key: string): (string, string?)
+	local id, side = string.match(key, "^(%a+)_([LR])$")
+	if id then
+		return id, side
+	end
+	return key, nil
+end
+
+-- the load of a body's implants (key -> tier)
+function Cyberware.Load(list: { [string]: number }): number
+	local n = 0
+	for key, tier in list do
+		local id = Cyberware.Split(key)
+		local d = Cyberware.ById[id]
+		if d then
+			n += d.load[math.clamp(tier, 1, d.tiers)] or 0
+		end
+	end
+	return n
+end
+
+-- the price of installing (or the refund-free price of removing: Config.CyberRemoveShare of it)
+function Cyberware.Price(id: string, tier: number): number
+	local d = Cyberware.ById[id]
+	return d and (d.price[math.clamp(tier, 1, d.tiers)] or 0) or 0
+end
+
+-- an implant list in one attribute: "optics=3,titan_L=2,..."
+function Cyberware.Encode(list: { [string]: number }): string
+	local parts = {}
+	for key, tier in list do
+		table.insert(parts, key .. "=" .. tostring(tier))
+	end
+	table.sort(parts)
+	return table.concat(parts, ",")
+end
+
+function Cyberware.Decode(s: any): { [string]: number }
+	local out = {}
+	if typeof(s) ~= "string" then
+		return out
+	end
+	for key, tier in string.gmatch(s, "([%w_]+)=(%d)") do
+		local id = Cyberware.Split(key)
+		local d = Cyberware.ById[id]
+		local t = tonumber(tier)
+		if d and t then
+			out[key] = math.clamp(t, 1, d.tiers)
+		end
+	end
+	return out
+end
+
+-- the tier of an implant in a decoded list (either side for a sided one)
+function Cyberware.Tier(list: { [string]: number }, id: string): number
+	local best = list[id] or 0
+	local l, r = list[id .. "_L"], list[id .. "_R"]
+	if l and l > best then
+		best = l
+	end
+	if r and r > best then
+		best = r
+	end
+	return best
+end
+
+-- finishes of a TITAN arm (random per arm): name, plate colour, seam glow
+Cyberware.Finishes = {
+	{ name = "CHROME", plate = Color3.fromRGB(196, 202, 212), dark = Color3.fromRGB(58, 62, 70), glow = Color3.fromRGB(90, 220, 255), refl = 0.35 },
+	{ name = "GUNMETAL", plate = Color3.fromRGB(78, 82, 90), dark = Color3.fromRGB(30, 32, 36), glow = Color3.fromRGB(255, 70, 70), refl = 0.15 },
+	{ name = "CARBON", plate = Color3.fromRGB(32, 33, 37), dark = Color3.fromRGB(16, 16, 18), glow = Color3.fromRGB(80, 255, 160), refl = 0.05 },
+	{ name = "BRASS", plate = Color3.fromRGB(196, 160, 82), dark = Color3.fromRGB(70, 52, 30), glow = Color3.fromRGB(255, 190, 90), refl = 0.25 },
+	{ name = "CRIMSON", plate = Color3.fromRGB(150, 26, 36), dark = Color3.fromRGB(34, 20, 22), glow = Color3.fromRGB(255, 220, 120), refl = 0.15 },
+	{ name = "CERAMIC", plate = Color3.fromRGB(226, 228, 232), dark = Color3.fromRGB(70, 74, 82), glow = Color3.fromRGB(255, 120, 200), refl = 0.05 },
+	{ name = "COBALT", plate = Color3.fromRGB(38, 70, 150), dark = Color3.fromRGB(18, 24, 44), glow = Color3.fromRGB(120, 200, 255), refl = 0.2 },
+}
+Cyberware.Models = { "PLATED", "SKELETAL", "HEAVY" }
+
+-- the HOWLER's shells and colours (M > CYBERWARE)
+Cyberware.Shells = { "EXPLOSIVE", "SHOCK", "SLUG" }
+Cyberware.Colors = {
+	{ name = "RED", c = Color3.fromRGB(255, 60, 50) },
+	{ name = "CYAN", c = Color3.fromRGB(60, 230, 255) },
+	{ name = "GREEN", c = Color3.fromRGB(90, 255, 120) },
+	{ name = "VIOLET", c = Color3.fromRGB(190, 90, 255) },
+	{ name = "AMBER", c = Color3.fromRGB(255, 180, 50) },
+	{ name = "WHITE", c = Color3.fromRGB(240, 240, 255) },
+}
+
+-- the default keys of the cyber bar
+Cyberware.DefaultKeys = { "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine" }
+
+return Cyberware
+
+ end)()
+ local Items={Has=function() return false end}
+ local Config={CyberRemoveShare=.2}
+ type Op={op:string,key:string?,id:string?,tier:number?,side:string?}
+ local function validateRemoval(p: Player, opsIn: any): ({ Op }?, number, string?)
+	if typeof(opsIn) ~= "table" then
+		return nil, 0, "nothing picked"
+	end
+	local list = CyberService.List(p)
+	local ops: { Op } = {}
+	local total = 0
+	local removes, installs, removing = {}, {}, {}
+	for i, o in ipairs(opsIn) do
+		if i > 8 or typeof(o) ~= "table" then
+			break
+		end
+		if o.op == "out" and typeof(o.key) == "string" and list[o.key] and not removing[o.key] then
+			removing[o.key] = true
+			table.insert(removes, { op = "out", key = o.key })
+		elseif o.op == "in" and typeof(o.id) == "string" and typeof(o.tier) == "number" and o.tier == o.tier and math.abs(o.tier) < math.huge then
+			local d = Cyberware.ById[o.id]
+			local side = (o.side == "L" or o.side == "R") and o.side or nil
+			if d then
+				table.insert(installs, { op = "in", id = o.id, tier = math.clamp(math.floor(o.tier), 1, d.tiers), side = side })
+			end
+		end
+	end
+	for _, r in removes do
+		local id = Cyberware.Split(r.key)
+		total += math.floor(Cyberware.Price(id, list[r.key]) * Config.CyberRemoveShare)
+		list[r.key] = nil
+		table.insert(ops, r)
+	end
+	for _, o in installs do
+		local d = Cyberware.ById[o.id]
+		if d.admin and not Items.Has(p, d.id) then
+			return nil, 0, d.name .. " is for admins only"
+		end
+		local key = Cyberware.Key(o.id, o.side)
+		local slot = Cyberware.SlotKey(d, o.side)
+		for k in list do
+			local kid, kside = Cyberware.Split(k)
+			local kd = Cyberware.ById[kid]
+			if kd and k ~= key and Cyberware.SlotKey(kd, kside) == slot then
+				return nil, 0, "the " .. Cyberware.SlotName[d.slot] .. " slot is taken by " .. kd.name .. " (take it out first)"
+			end
+		end
+		local had = list[key] or 0
+		if had >= o.tier then
+			return nil, 0, d.name .. " is already in"
+		end
+		-- an upgrade pays the difference
+		total += Cyberware.Price(o.id, o.tier) - (had > 0 and Cyberware.Price(o.id, had) or 0)
+		list[key] = o.tier
+		table.insert(ops, o)
+	end
+	if #ops == 0 then
+		return nil, 0, "nothing picked"
+	end
+	return ops, total, nil
+end
+
+
+ local p=player(291,vec(0,0,0))
+ local ops,total,why=validateRemoval(p,{{op="out",key="optics"}})
+ eq(#ops,1,"ripper accepts uninstall operation");eq(ops[1].key,"optics","ripper removes selected implant")
+ eq(total,math.floor(Cyberware.Price("optics",2)*.2),"ripper quotes removal price from installed tier")
+ eq(why,nil,"valid uninstall accepted")
+ local duplicates,price=validateRemoval(p,{{op="out",key="optics"},{op="out",key="optics"}})
+ eq(#duplicates,1,"duplicate removals deduplicated");eq(price,total,"duplicate removal cannot double-charge")
+ local sideOps=validateRemoval(p,{{op="out",key="titan_L"}});eq(sideOps[1].key,"titan_L","uninstall preserves selected arm side")
+ eq(validateRemoval(p,{{op="out",key="missing"}}),nil,"cannot uninstall implant not owned")
+ eq(installed.optics,2,"quoting does not mutate actual implants before surgery")
 end
 
 print("PASS: "..total.." current-source assertions")

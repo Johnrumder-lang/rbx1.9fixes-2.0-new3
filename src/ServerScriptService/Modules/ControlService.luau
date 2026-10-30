@@ -3,18 +3,20 @@
 local Players = game:GetService("Players")
 local Items = require(game.ReplicatedStorage.Shared.Items)
 local Config = require(game.ReplicatedStorage.Shared.Config)
+local Navigation = require(script.Parent.DirectivePath)
 local Service = {}
 local directives, deps = {}, nil
 local function torso(ch) return ch and not ch:GetAttribute("Dead") and ch:FindFirstChild("Torso") end
 local function clear(p)
+	if directives[p] and directives[p].nav then Navigation.Clear(directives[p].nav) end
 	directives[p] = nil
 	p:SetAttribute("ControlTarget", nil)
 	local ch = p.Character
 	if ch then
-		for _, a in { "ControlActive", "ControlGoal", "ControlAim", "ControlMove", "CrashOut" } do ch:SetAttribute(a, nil) end
+		for _, a in { "ControlActive", "ControlGoal", "ControlAim", "ControlMove", "ControlJump", "CrashOut", "CrashOutSource" } do ch:SetAttribute(a, nil) end
 	end
 end
-function Service.Start(p, targetId, seconds)
+function Service.Start(p, targetId, seconds, source)
 	if not p or not p.Parent then return false end
 	if targetId then
 		local target = Players:GetPlayerByUserId(targetId)
@@ -22,7 +24,8 @@ function Service.Start(p, targetId, seconds)
 	end
 	local current = directives[p]
 	if current and current.targetId and not targetId then return true end
-	directives[p] = { targetId = targetId, untilT = targetId and math.huge or workspace:GetServerTimeNow() + (seconds or 10), nextGun = 0, nextShot = 0 }
+	if current and current.nav then Navigation.Clear(current.nav) end
+	directives[p] = { nav = Navigation.New(), source = source, targetId = targetId, untilT = targetId and math.huge or workspace:GetServerTimeNow() + (seconds or 10), nextGun = 0, nextShot = 0 }
 	p:SetAttribute("ControlTarget", targetId)
 	if p.Character then p.Character:SetAttribute("ControlActive", true) end
 	return true
@@ -84,7 +87,7 @@ function Service.Init(d)
 			for p, rec in directives do if rec.targetId == target.UserId then clear(p) end end
 		end
 	end
-	Players.PlayerRemoving:Connect(function(p) directives[p] = nil end)
+	Players.PlayerRemoving:Connect(clear)
 	task.spawn(function()
 		while true do
 			task.wait(0.1)
@@ -93,24 +96,33 @@ function Service.Init(d)
 				local ch, rec = p.Character, directives[p]
 				local root = torso(ch)
 				if not rec and root and (ch:GetAttribute("CrashOut") or 0) > now then
-					Service.Start(p, nil, ch:GetAttribute("CrashOut") - now); rec = directives[p]
+					Service.Start(p, nil, ch:GetAttribute("CrashOut") - now, ch:GetAttribute("CrashOutSource")); rec = directives[p]
 				end
 				if not rec then continue end
-				if now >= rec.untilT then clear(p); continue end
+				if now >= rec.untilT or (rec.source == "psychosis" and (p:GetAttribute("CyPsycho") or 0) <= 0) then clear(p); continue end
 				local tp = rec.targetId and Players:GetPlayerByUserId(rec.targetId)
 				if tp and tp.Character and tp.Character:GetAttribute("Dead") then clear(p); continue end
 				if not root then continue end -- target directives resume after their carrier respawns
 				ch:SetAttribute("ControlActive", true)
-				if (ch:GetAttribute("TemporalFrozenUntil") or 0) > now then ch:SetAttribute("ControlMove", false); continue end
+				if (ch:GetAttribute("TemporalFrozenUntil") or 0) > now then ch:SetAttribute("ControlMove", false); ch:SetAttribute("ControlJump", false); continue end
 				local target
 				if rec.targetId then target = tp and tp.Character else target = nearestTarget(p, root) end
 				local tt = torso(target)
 				local gun, pickup = gunFor(p, root, rec)
 				local goal = pickup or (tt and tt.Position)
-				ch:SetAttribute("ControlGoal", goal)
+				local visible = false
+				if tt then
+					local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Exclude
+					rp.FilterDescendantsInstances = { ch, gun or ch }; rp.RespectCanCollide = true
+					local hit = workspace:Raycast(root.Position, tt.Position - root.Position, rp)
+					visible = not hit or hit.Instance:IsDescendantOf(target)
+				end
+				local waypoint, moving, jump = Navigation.Step(rec.nav, root, goal, pickup and 4 or 18, pickup ~= nil or visible)
+				ch:SetAttribute("ControlGoal", waypoint)
 				ch:SetAttribute("ControlAim", tt and tt.Position or goal)
-				ch:SetAttribute("ControlMove", goal ~= nil and (goal - root.Position).Magnitude > (pickup and 4 or 18))
-				if gun and tt and os.clock() >= rec.nextShot then
+				ch:SetAttribute("ControlMove", moving)
+				ch:SetAttribute("ControlJump", jump)
+				if gun and tt and visible and os.clock() >= rec.nextShot then
 					rec.nextShot = os.clock() + 0.25
 					if (gun:GetAttribute("Ammo") or 0) <= 0 then deps.ItemService.Reload(p, gun)
 					else

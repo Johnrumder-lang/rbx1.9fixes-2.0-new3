@@ -151,7 +151,7 @@ end
 -- the tags over the players
 ------------------------------------------------------------------------
 
-type Tag = { gui: BillboardGui, title: TextLabel, name: TextLabel, titleId: string?, char: Model?, adornee: BasePart? }
+type Tag = { gui: BillboardGui, title: TextLabel, clan: TextLabel, name: TextLabel, titleId: string?, char: Model?, adornee: BasePart? }
 local tags: { [Player]: Tag } = {}
 local npcTags: { [Model]: Tag } = {} -- (v2.0) the bots get a name tag too (the same: walls hide it)
 
@@ -199,8 +199,10 @@ local function makeTag(text: string): Tag
 	ns.Thickness = 1.5
 	ns.Transparency = 0.25
 	ns.Parent = name
+	local clan = name:Clone()
+	clan.Name = "Clan"; clan.Text = ""; clan.TextColor3 = Color3.fromRGB(215, 215, 215); clan.Parent = bb
 	bb.Parent = pg
-	return { gui = bb, title = title, name = name, titleId = nil, char = nil, adornee = nil }
+	return { gui = bb, title = title, clan = clan, name = name, titleId = nil, char = nil, adornee = nil }
 end
 
 local function place(tag: Tag, char: Model?)
@@ -229,6 +231,8 @@ local function updateTag(p: Player)
 	local hide = not char or char:GetAttribute("Dead") == true or adornee == nil or cloaked
 		or (p == player and (Input.firstPerson or Input.spectating))
 	tag.gui.Enabled = not hide
+	local clan = p:GetAttribute("ClanName")
+	tag.clan.Text = typeof(clan) == "string" and ("[" .. clan .. "]") or ""
 	-- the title
 	local id = p:GetAttribute("Title")
 	id = (typeof(id) == "string" and Titles.ById[id]) and id or nil
@@ -288,15 +292,19 @@ local function sizeTags()
 		end
 		local d = (tag.adornee.Position - eye).Magnitude
 		local k = math.clamp(16 / math.max(d, 1), 0.4, 1)
-		local hasTitle = tag.title.Text ~= ""
-		tag.name.TextSize = math.floor(NAME_SIZE * k + 0.5)
-		tag.title.TextSize = math.floor(TITLE_SIZE * k + 0.5)
-		tag.title.Visible = hasTitle
-		local h = (hasTitle and (TITLE_SIZE + NAME_SIZE + 10) or (NAME_SIZE + 6)) * k
-		tag.gui.Size = UDim2.fromOffset(math.floor(260 * k), math.floor(h))
-		tag.name.Size = hasTitle and UDim2.new(1, 0, NAME_SIZE / (TITLE_SIZE + NAME_SIZE), 0) or UDim2.fromScale(1, 1)
-		tag.title.Size = UDim2.new(1, 0, TITLE_SIZE / (TITLE_SIZE + NAME_SIZE), 0)
-		tag.title.Position = UDim2.fromScale(0, TITLE_SIZE / (TITLE_SIZE + NAME_SIZE))
+		local hasTitle, hasClan = tag.title.Text ~= "", tag.clan.Text ~= ""
+		local height = NAME_SIZE + (hasTitle and TITLE_SIZE or 0) + (hasClan and 16 or 0) + 8
+		tag.gui.Size = UDim2.fromOffset(math.floor(260 * k), math.floor(height * k))
+		local y = 0
+		for _, row in { { tag.clan, hasClan, 16 }, { tag.title, hasTitle, TITLE_SIZE }, { tag.name, true, NAME_SIZE } } do
+			local text, visible, size = row[1], row[2], row[3]
+			text.Visible = visible
+			text.TextSize = math.floor(size * k + 0.5)
+			text.AnchorPoint = Vector2.zero
+			text.Position = UDim2.fromScale(0, y / height)
+			text.Size = UDim2.fromScale(1, size / height)
+			if visible then y += size end
+		end
 	end
 	for _, tag in tags do
 		size(tag)

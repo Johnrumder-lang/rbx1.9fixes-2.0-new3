@@ -1,0 +1,31 @@
+do
+ local sent={}
+ local Remote={OnServerEvent=event(),FireClient=function(_,p,action,a,b) table.insert(sent,{action=action,a=a,b=b}) end}
+ local RunService={Heartbeat=event()}
+ local game={GetService=function(_,name) if name=="Players" then return Players elseif name=="ReplicatedStorage" then return replicated else return RunService end end}
+ local look=vec(0,0,-1)
+ local CFrame={lookAt=function(at) return {Position=at} end}
+ shared.children.ReplayCodec={Encode=function(frames,slots) return {frames=frames,slots=slots} end}
+ local camItems={Kind=function(item) return item.kind end}
+ local oldItems=shared.children.Items;shared.children.Items=camItems
+ local Camera=(function()
+ @MODULE:CameraService@
+ end)()
+ local p=player(251,vec(0,0,0));local item=object("Model");item.kind="camera";item.PrimaryPart=object("Part");item.PrimaryPart.Position=vec(0,3,0);item.PrimaryPart.CFrame={LookVector=look}
+ local clipCode
+ Camera.Init({ChipService={Remote=Remote,GiveVideo=function(_,code) clipCode=code end},OwnershipService={ItemHolder=function() return p end},GoreService={Sound=function() end}})
+ Camera.Start(p,item)
+ check(Camera._recording[p]~=nil,"held camera starts recording")
+ local rec=Camera._recording[p]
+ rec.seen[p.Character]=true
+ rec.frames={{dt=0,cam={Position=vec(0,3,0)},bodies={}},{dt=1,cam={Position=vec(2,3,0)},bodies={}}}
+ Camera.Stop(p)
+ check(clipCode~=nil,"recording stop creates video chip")
+ Camera.Play(p,clipCode,nil,p);local start=sent[#sent-1];local data=sent[#sent]
+ eq(start.action,"videostart","play sends metadata first");eq(data.action,"videodata","play sends frame data")
+ eq(start.a.playId,data.a,"metadata and buffer use same playback ID")
+ eq(start.a.code,clipCode,"playback still refers to saved video chip")
+ local previous=start.a.playId
+ Camera.Play(p,clipCode,nil,p);check(sent[#sent-1].a.playId~=previous,"replaying same chip gets isolated playback ID")
+ shared.children.Items=oldItems
+end

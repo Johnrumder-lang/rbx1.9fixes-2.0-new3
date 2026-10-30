@@ -1,0 +1,39 @@
+do
+ local player=player(301,vec(0,0,0))
+ local panel=object("Frame")
+ local slotRows={};local deck={slots={false,false,false,false,false,false}}
+ local zoomOn,scanOn=false,false
+ local deckRefresh=nil
+ local events={}
+ local Remote={FireServer=function(_,action,slot) table.insert(events,{action,slot}) end}
+ local UDim2={new=function() return {} end,fromOffset=function() return {} end}
+ local Vector2={new=function() return {} end}
+ local Enum={TextTruncate={AtEnd=1}}
+ local C={amber={},dim={},text={},good={}};local PANEL,PANEL2={},{}
+ local UI={make=function(class,props)
+  local o=object(class);for k,v in props do o[k]=v end
+  if props.Parent and props.Name then props.Parent.children[props.Name]=o end
+  return o
+ end}
+ UI.label=function(props) return UI.make("TextLabel",props) end
+ UI.button=function(props,fn) local b=UI.make("TextButton",props);b.click=fn;return b end
+@SLOT_BUILD@
+ local function refresh()
+@SLOT_REFRESH@
+ end
+ refresh()
+ for i=1,6 do
+  check(not slotRows[i].children.Act.Visible,"empty serialized slot "..i.." hides toggle safely")
+  check(not slotRows[i].children.Eject.Visible,"empty slot "..i.." hides eject")
+ end
+ deck.slots[5]={id="scan",tier=1};deck.slots[6]={id="zoom",tier=1}
+ refresh()
+ check(slotRows[5].children.Act.Visible and slotRows[5].children.Eject.Visible,"scanner has separate toggle and eject")
+ check(slotRows[6].children.Act.Visible and slotRows[6].children.Eject.Visible,"zoom has separate toggle and eject")
+ slotRows[5].children.Act.click();check(scanOn,"scanner can still toggle on")
+ slotRows[5].children.Eject.click();check(not scanOn,"eject disables scanner effect")
+ eq(events[#events][1],"eject","scanner eject sends removal request");eq(events[#events][2],5,"scanner eject uses correct slot")
+ slotRows[6].children.Act.click();check(zoomOn,"zoom can still toggle on")
+ slotRows[6].children.Eject.click();check(not zoomOn,"eject disables zoom effect")
+ eq(events[#events][2],6,"zoom eject uses sixth slot")
+end

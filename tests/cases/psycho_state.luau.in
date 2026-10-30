@@ -1,0 +1,17 @@
+do
+ local script={Parent={Items=Items,Config=Config}}
+ local State=(function()
+ @MODULE:PsychosisState@
+ end)()
+ local p=player(231,vec(0,0,0))
+ p:SetAttribute("CyLoad",23);p:SetAttribute("CyTolBonus",3);p:SetAttribute("CyPsycho",0)
+ eq(State.Level(p),0,"23 / 23 capacity and zero stress produces no effects")
+ p:SetAttribute("SandevistanPsycho",.9);eq(State.Level(p),0,"hidden Sandevistan meter cannot produce effects at displayed zero")
+ p:SetAttribute("CyPsycho",.6);eq(State.Level(p),0,"capacity boundary suppresses stale residual stress")
+ p:SetAttribute("CyLoad",24);eq(State.Level(p),.6,"overloaded player uses visible psychosis meter")
+ p.admin=true;eq(State.Level(p),0,"immune admin has no effects")
+ p:SetAttribute("AdminPsychoEnabled",true);eq(State.Level(p),.6,"admin opt-in uses real overload")
+ p:SetAttribute("CyLoad",23);eq(State.Level(p),0,"opt-in admin at exact capacity stays safe")
+ p:SetAttribute("CyLoad",24);workspace:SetAttribute("PsychosisOff",true);eq(State.Level(p),0,"global psychosis switch still works")
+ workspace:SetAttribute("PsychosisOff",nil)
+end

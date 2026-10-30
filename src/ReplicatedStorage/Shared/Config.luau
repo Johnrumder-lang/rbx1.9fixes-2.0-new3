@@ -4,7 +4,7 @@
 
 local Config = {}
 
-Config.Version = "v3.1"
+Config.Version = "v3.2"
 Config.GameName = "RAGDOLL SANDBOX"
 
 ------------------------------------------------------------------------
@@ -1123,10 +1123,11 @@ Config.RivalLines = {
 
 -- (v2.9) CHIPS, the video camera, the computer and the netrunner deck (ChipService, CameraService, ComputerService,
 -- ChipClient). All of this is made up for the game - a cyberpunk sandbox, like the implants.
-Config.ChipSlots = 4 -- the neck slots a body has for chips
+Config.ChipSlots = 6 -- the neck slots a body has for chips
 Config.DodgeWindow = 6 -- s a REFLEX BUFFER stays armed once it triggers
 Config.ScanRange = 260 -- studs the SCANNER marks things within
 Config.ZoomFov = { 45, 32, 20 } -- the field of view the ZOOM OPTICS pull to, per tier (lower = closer)
+Config.QuickhackDelay = 5 -- seconds to upload; the link is checked again before activation
 Config.NetRange = 160 -- studs you can run a quickhack / the netrunner interface reaches
 Config.VirusPrice = 250 -- a virus bought at the computer (programmed onto a blank chip)
 Config.BlankPrice = 80 -- a blank chip at the computer

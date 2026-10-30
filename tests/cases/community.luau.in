@@ -1,0 +1,27 @@
+do
+ local p=player(201,vec(0,0,0));local prof=profile();prof.cash=3000
+ local record=nil
+ local function copy(v) if type(v)~="table" then return v end;local c={};for k,x in v do c[k]=copy(x) end;return c end
+ local store={UpdateAsync=function(_,key,fn) local first=fn(copy(record));if first then record=fn(copy(record)) end;return copy(record) end}
+ Persist._setup(p,prof,store)
+ local ok=Persist.CommitCommunity(p,function(c) c.clan={id="one"};return true end,2500)
+ check(ok,"clan fee transaction commits");eq(prof.cash,500,"clan fee deducted once on callback retry");eq(record.cash,500,"clan fee and membership saved together")
+ eq(prof.community.clan.id,"one","clan membership applied to current session")
+ local refused=Persist.CommitCommunity(p,function(c) c.clan={id="two"};return true end,2500)
+ check(not refused,"insufficient funds rejected");eq(prof.cash,500,"no negative balance")
+ local current=copy(prof)
+ Persist._setup(p,profile(),store)
+ check(not Persist.CommitCommunity(p,function(c) c.daily.step=7;return true end),"stale session revision rejected")
+ eq(record.community.rev,1,"stale transaction preserves canonical revision")
+ local stale=Persist.Get(p);stale.dirty=true;stale.cash=9999
+ Persist._save(p);eq(record.cash,500,"late autosave cannot overwrite a newer clan fee / daily claim")
+ check(not Persist.ClaimCode(p,"latecode",200,{}),"stale code redemption cannot overwrite new community rewards")
+ check(not stale.codes.latecode,"rejected stale code stays redeemable after reconnect")
+ Persist._setup(p,current,{UpdateAsync=function() error("offline") end})
+ current.cash=3000
+ check(not Persist.CommitCommunity(p,function(c) c.clan=nil;return true end,2500),"failed clan save rejected")
+ eq(current.cash,3000,"failed save refunds reserved cost");eq(current.community.clan.id,"one","failed save preserves membership")
+ Persist._setup(p,current,store)
+ check(not Persist.CommitCommunity(p,function() return false,"denied" end,2500),"validation failure rejects transaction")
+ eq(current.cash,3000,"validation failure refunds reservation")
+end

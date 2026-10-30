@@ -1,8 +1,22 @@
-# Ragdoll Sandbox v3.1
+# Ragdoll Sandbox v3.2
 
-Die vollständige Spiel-Datei ist `RagdollSandbox_v3_1.rbxlx`. In Roblox Studio über **File → Open from File** öffnen. Die Skriptquellen und die Datei sind synchronisiert; es wurde keine Roblox-Experience veröffentlicht und kein echter Spielstand zurückgesetzt.
+Die vollständige Spiel-Datei ist `RagdollSandbox_v3_2.rbxlx`. In Roblox Studio über **File → Open from File** öffnen. Die Skriptquellen und die Datei sind synchronisiert; es wurde keine Roblox-Experience veröffentlicht und kein echter Spielstand zurückgesetzt.
 
-## Fehlerbehebungen
+## Neu in v3.2
+
+- **M → CLANS:** Für **$2.500** einen Clan gründen; Namen prüft der Roblox-Textfilter. Der Leiter lädt Personen aus dem aktuellen Server ein. Einladungen gelten fünf Minuten und müssen angenommen werden. Beitritt ist kostenlos; maximal 50 Mitglieder. Mitglieder können austreten, der Leiter kann Mitglieder entfernen oder den Clan auflösen. Die Gründungskosten werden beim Auflösen nicht erstattet. Mitgliedschaft wird gespeichert und der Clanname erscheint als zusätzliche Zeile über Name/Titel. Änderungen werden auf anderen Servern regelmäßig nachgeladen.
+- **M → DAILY:** Das Tagesfenster öffnet sich automatisch, wenn eine Belohnung verfügbar ist. Ein Anspruch pro UTC-Kalendertag, Wechsel um 00:00 UTC. **Tag 3: ein Skin; Tag 7: drei Skins.** An Tag 1, 2, 4, 5, 6 gibt es **$25–1.000** und zusätzlich eine **0,5-%-Chance** auf einen Tier-1-Implantatkoffer ohne Admin-Implantate. Die Koffer bleiben als Abholanspruch gespeichert; **TAKE CASE** legt einen echten Koffer in die Hand. Es wird nichts automatisch eingebaut. Bei vollständig besessenen Skins gibt es $250 je ersetztem Skin. Nach Tag 7 beginnt der Zyklus erneut; ein ausgelassener Tag setzt die Serie auf Tag 1.
+- Clan-Gründung und Tagesbelohnungen werden mit Geld/Skins gemeinsam gespeichert. Wiederholte Klicks und wiederholte DataStore-Aufrufe zahlen nicht mehrfach aus. Bei einem Speicherfehler wird keine neue Belohnung ausgegeben; eine reservierte Gründungsgebühr wird zurückgegeben. Unveröffentlichtes Studio nutzt Sitzungsspeicher; dauerhafte Änderungen benötigen einen öffentlichen Server mit funktionierendem Speicher.
+- **Sechs ausgerüstete Chip-Slots.** F speichert alle gehaltenen Chiptypen im Deck, einschließlich gespawnter Blank-Chips ohne Metadaten. Wenn eine andere Person gegriffen wird, bleibt F die bestehende Einsetz-Aktion. Scanner und Zoom Optics haben jeweils getrennte **ON/OFF**- und **EJECT**-Knöpfe.
+- **Quickhacks: fünf Sekunden Upload.** Das HUD zeigt den Countdown. Vor der Wirkung prüft der Server Chip, Körper, Sicht und Reichweite erneut; Auswerfen oder verlorener Kontakt bricht ab. Das gilt auch für den Blackwall-Upload; dessen Beam hat anschließend seinen kurzen bestehenden Effektdurchlauf. Viren behalten **15 Sekunden** Inkubation.
+- **Ripperdoc → UNINSTALL CYBERWARE:** Übersicht aller installierten Implantate, einschließlich Seitenangabe und Ausbaupreis. Ausbau zur Liste hinzufügen, **SIGN THE LIST**, anschließend auf die Behandlungsliege legen. Doppelte Ausbau-Einträge werden nicht doppelt berechnet.
+- **Code `fixes`:** einmalig **$200 + ein noch nicht besessener Waffenskin**. `2.0` und `update2` sind deaktiviert. Bereits verdiente Belohnungen bleiben; `netrunner` und `chips` funktionieren weiterhin.
+- **Zielvirus / Rampage:** Server-Wegfindung statt direktem Laufen gegen Wände, mit Wegpunkten, Sprüngen, Berücksichtigung der Körpergröße und Neuberechnung bei Hindernissen oder Stillstand. Ohne erreichbaren Pfad wird erneut gesucht; Schüsse brauchen freie Sicht.
+- **Videos / Krankenhaus-Replays:** Terrain wird nicht geklont. Die Baseplate wird weiterhin kopiert. Bei SKIP, Zeitüberschreitung oder Aufbaufehler werden Videofenster und Mauszustand aufgeräumt. Wiederholtes Abspielen benutzt getrennte Übertragungs-IDs.
+- **Psychose:** Der Sandevistan besitzt keinen versteckten zweiten Psychose-Zähler mehr. Implantatlast bis einschließlich Kapazität (z. B. **23/23**) ist sicher. Laufende Überlastungs-Halluzinationen und Störungen enden, sobald die Last wieder sicher ist. Das gilt auch für Admins mit abgeschalteter Immunität. Gezielte Virus-/Quickhack-Angriffe bleiben eigene Effekte.
+- Das M-Menü hat zwei Tab-Zeilen, damit CLANS und DAILY sowie Admin-Tabs lesbar bleiben.
+
+## Bisherige Fehlerbehebungen
 
 - **Studio-Start:** `ProgressEpoch` fängt auch Fehler beim Anfordern des DataStores ab. Ein unveröffentlichter Place startet mit Sitzungsspeicher. In veröffentlichten Servern werden echte Spielstände weiterhin geladen; bei unbekannter Speicher-Generation wird kein vorhandener Spielstand überschrieben.
 - **Ripperdoc:** Der neue PC steht auf der vorhandenen Theke am Front-Desk und zeigt zur Bedienposition. Die zusätzlichen Tische mitten im Raum entfallen.
@@ -54,14 +68,20 @@ Paket-Routen wählen verschiedene Start- und Zielorte aus Baustelle, rotem Haus,
 
 ## Prüfung und noch nötiger Studio-Test
 
-159 Skripte aus der exportierten Datei kompilieren. **150 Assertions** mit aktuellen Quellen und simulierten Roblox-Diensten bestehen. XML, Referenzen, Quellenübereinstimmung und Erhalt der bestehenden Welteigenschaften sind geprüft.
+164 Skripte aus der exportierten Datei kompilieren. **371 Assertions** mit aktuellen Quellen und simulierten Roblox-Diensten bestehen. XML, Referenzen, Quellenübereinstimmung und Erhalt der bestehenden Welteigenschaften sind geprüft.
 
 **Ein echter Roblox-Studio-/Mehrspieler-/Grafiktest wurde hier nicht ausgeführt.** Vor dem Veröffentlichen mit mindestens zwei Clients prüfen:
 
-1. Unveröffentlichten Place starten; F4 öffnen, Spieler locken, Mausrad/F nutzen. F mit Chip, SLOT/EJECT/TAKE sowie Kameraaufnahme ausprobieren.
-2. Admin-Immunität ohne Implantate ausschalten; danach Überlastung mit Implantaten und gezielten Virusangriff getrennt prüfen.
-3. Zielvirus einsetzen: Auswahl beim Einsetzenden, 15 Sekunden warten, keine eigene Steuerung, sichtbare Waffenaufnahme, Fortsetzung nach Trägertod und Ende nach Zieltod.
-4. PvP-Jobs mit echten Spielern abschließen/verlieren; 180 Sekunden nach Fehlschlag, keine Sperre nach Erfolg. Paket wirklich transportieren und Routen wechseln.
-5. Dodge an freien Stellen und neben Wänden; Aegis vor und nach Schildbruch; keine Löcher bei vollständig abgewehrten Treffern.
-6. Ripperdoc-Theke, Boden in eigenen Videos und Krankenhaus-Bildschirm sowie Stillwater-Summon kontrollieren.
-7. Geschenke geben, Empfänger ausloggen, offline entziehen und erneut beitreten. Serverübergreifende Entziehung und Einzel-/Gesamt-Reset ausschließlich in einer getrennten Test-Experience prüfen.
+1. Zwei Clients: Clan für $2.500 gründen, einladen/beitreten, Tags sehen, rejoinen, austreten/entfernen/auflösen. Im veröffentlichten Test-Place Speicherung über getrennte Server prüfen.
+2. Tagespopup, einmaligen Anspruch, Skin-Tage, erneuten Beitritt und Kofferabholung prüfen. Kalender-/Ausfallfälle sind zusätzlich im CLI simuliert.
+3. Zielvirus mit Wänden, Treppen, beweglichen Hindernissen und unerreichbarem Ziel testen; erzwungene Bewegung/Sprünge und freie Schusslinie kontrollieren.
+4. Kamera aufnehmen, Video im Deck abspielen/überspringen/erneut abspielen; Krankenhaus-Großbildschirm auf zwei Clients ansehen. Terrain darf keinen Clone-Fehler erzeugen.
+5. Genau 23/23 Kapazität mit Sandevistan halten; kein Überlastungseffekt bei 0 %. Danach echte Überlastung und gezielte Angriffe getrennt testen.
+6. Alle sechs Slots belegen, Scanner/Zoom schalten und auswerfen, gespawnten Blank-Chip mit F einlagern. Upload nach fünf Sekunden sowie Abbruch beim Auswerfen prüfen. Ripperdoc-Ausbau über die neue Liste durchführen.
+7. Unveröffentlichten Place starten; F4 öffnen, Spieler locken, Mausrad/F nutzen. F mit Chip, SLOT/EJECT/TAKE sowie Kameraaufnahme ausprobieren.
+8. Admin-Immunität ohne Implantate ausschalten; danach Überlastung mit Implantaten und gezielten Virusangriff getrennt prüfen.
+9. Zielvirus einsetzen: Auswahl beim Einsetzenden, 15 Sekunden warten, keine eigene Steuerung, sichtbare Waffenaufnahme, Fortsetzung nach Trägertod und Ende nach Zieltod.
+10. PvP-Jobs mit echten Spielern abschließen/verlieren; 180 Sekunden nach Fehlschlag, keine Sperre nach Erfolg. Paket wirklich transportieren und Routen wechseln.
+11. Dodge an freien Stellen und neben Wänden; Aegis vor und nach Schildbruch; keine Löcher bei vollständig abgewehrten Treffern.
+12. Ripperdoc-Theke, Boden in eigenen Videos und Krankenhaus-Bildschirm sowie Stillwater-Summon kontrollieren.
+13. Geschenke geben, Empfänger ausloggen, offline entziehen und erneut beitreten. Serverübergreifende Entziehung und Einzel-/Gesamt-Reset ausschließlich in einer getrennten Test-Experience prüfen.

@@ -1090,6 +1090,7 @@ local function buildInventoryPage(page: Frame)
 end
 
 local function showPage(name: string)
+	require(Modules.CommunityClient).Refresh(name)
 	if name == "inventory" and inventoryRefresh then
 		inventoryRefresh()
 	end
@@ -1123,30 +1124,22 @@ local function build()
 	})
 	UI.make("UISizeConstraint", { MaxSize = Vector2.new(560, 470), Parent = root })
 	UI.make("UIScale", { Name = "Scale", Parent = root }):SetAttribute("Managed", true)
-	local tabList = { { "settings", "SETTINGS" }, { "skins", "SKINS" }, { "inventory", "INVENTORY" }, { "cyber", "CYBER" }, { "bounty", "BOUNTY" }, { "codes", "CODES" }, { "vote", "VOTE" } }
+	local tabList = { { "settings", "SETTINGS" }, { "skins", "SKINS" }, { "inventory", "INVENTORY" }, { "cyber", "CYBER" }, { "clans", "CLANS" }, { "daily", "DAILY" }, { "bounty", "BOUNTY" }, { "codes", "CODES" }, { "vote", "VOTE" } }
 	if Items.IsOwner(player) then
 		table.insert(tabList, { "gifts", "GIFTS" })
 		table.insert(tabList, { "giftlog", "GIFT LOG" })
 		table.insert(tabList, { "admin", "ADMIN" })
 		table.insert(tabList, { "players", "PLAYERS" })
 	end
-	-- (v2.0) the tabs share the width; with few of them there is room for the MENU title
-	local left = #tabList <= 4 and 84 or 12
-	if left > 12 then
-		UI.label({ Text = "MENU", Font = UI.FONT_TITLE, TextSize = 20, Position = UDim2.fromOffset(16, 8), Size = UDim2.fromOffset(100, 28), Parent = root })
-	end
-	local tabW = math.min(84, math.floor((560 - left - 50) / #tabList))
+	-- Two readable rows instead of squeezing every admin tab into one narrow strip.
+	local columns = 7
+	local tabW = 70
 	for i, t in tabList do
 		tabs[t[1]] = UI.button({
-			Text = t[2],
-			TextSize = tabW < 76 and 11 or 13,
-			TextScaled = tabW < 62, -- (v2.8: ten tabs for an admin)
-			Size = UDim2.fromOffset(tabW - 4, 28),
-			Position = UDim2.fromOffset(left + (i - 1) * tabW, 8),
+			Text = t[2], TextSize = 11, Size = UDim2.fromOffset(tabW - 4, 28),
+			Position = UDim2.fromOffset(12 + ((i - 1) % columns) * tabW, 8 + math.floor((i - 1) / columns) * 32),
 			Parent = root,
-		}, function()
-			showPage(t[1])
-		end)
+		}, function() showPage(t[1]) end)
 	end
 	UI.button({
 		Text = "X",
@@ -1161,8 +1154,8 @@ local function build()
 	for _, t in tabList do
 		local page = UI.make("ScrollingFrame", {
 			Name = t[1],
-			Position = UDim2.fromOffset(0, 44),
-			Size = UDim2.new(1, 0, 1, -50),
+			Position = UDim2.fromOffset(0, 78),
+			Size = UDim2.new(1, 0, 1, -84),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
 			ScrollBarThickness = 4,
@@ -1177,6 +1170,10 @@ local function build()
 			buildVotePage(page)
 		elseif t[1] == "gifts" then
 			buildGiftPage(page)
+		elseif t[1] == "clans" then
+			require(Modules.CommunityClient).BuildClans(page)
+		elseif t[1] == "daily" then
+			require(Modules.CommunityClient).BuildDaily(page)
 		elseif t[1] == "giftlog" then
 			require(Modules.GiftRegistryClient).Build(page)
 		elseif t[1] == "players" then
@@ -1250,6 +1247,12 @@ function SettingsMenu.Toggle()
 	end
 end
 
+function SettingsMenu.OpenPage(name)
+	if Input.IsControlled() then return end
+	if not open then SettingsMenu.Toggle() end
+	showPage(name)
+end
+
 function SettingsMenu.Init()
 	AdminRemote.OnClientEvent:Connect(function(action, message)
 		if action == "reseterror" then
@@ -1257,6 +1260,7 @@ function SettingsMenu.Init()
 		end
 	end)
 	build()
+	task.spawn(function() require(Modules.CommunityClient).Init(SettingsMenu) end)
 	-- (v2.0) codes: the answer; the inventory follows what you own / wear / did
 	RewardRemote.OnClientEvent:Connect(function(action, ok, msg)
 		if action == "redeemed" and codeResult and typeof(msg) == "string" then

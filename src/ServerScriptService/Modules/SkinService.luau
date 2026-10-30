@@ -46,6 +46,8 @@ local function publish(p: Player)
 	end
 end
 
+SkinService.Refresh = publish
+
 local function say(p: Player, text: string, good: boolean?)
 	ShopRemote:FireClient(p, "msg", text, good == true)
 end

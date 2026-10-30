@@ -23,7 +23,7 @@ function Client.Init()
 	CAS:BindActionAtPriority("NeuralControlLock", function()
 		return Input.IsControlled() and Enum.ContextActionResult.Sink or Enum.ContextActionResult.Pass
 	end, false, 10000, table.unpack(keys))
-	local was = false
+	local was, nextJump = false, 0
 	RunService.PreSimulation:Connect(function()
 		local active = Input.IsControlled()
 		if active then
@@ -36,6 +36,10 @@ function Client.Init()
 				Input.menuOpen, Input.promptOpen, Input.freeCursor, Input.keysCaptured = false, false, false, false
 			end
 			for _, key in { "mouseLeft", "mouseRight", "useHeld", "aimHeld", "jumpHeld", "runHeld", "runToggle", "downHeld", "laserHeld" } do Input[key] = false end
+			local ch = Players.LocalPlayer.Character
+			local jumping = ch and ch:GetAttribute("ControlJump") == true
+			Input.jumpHeld = jumping
+			if jumping and os.clock() >= nextJump then nextJump = os.clock() + 0.8; Input.ControlJump() end
 		end
 		was = active
 	end)

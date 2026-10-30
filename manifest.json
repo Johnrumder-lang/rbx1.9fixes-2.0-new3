@@ -12,12 +12,12 @@
   {
     "path": "/ReplicatedStorage/Shared/Chips",
     "file": "src/ReplicatedStorage/Shared/Chips.luau",
-    "sha256": "17d0bb9b2877d76023bc1cf6d9f81f0c08b776d82653e0956483dfd8ae9b7c97"
+    "sha256": "e70d9558eef1f17391c178896d3fab702ca4cb9f95915b146c76b9cf85740ed1"
   },
   {
     "path": "/ReplicatedStorage/Shared/Config",
     "file": "src/ReplicatedStorage/Shared/Config.luau",
-    "sha256": "f24dddfe10405afa2abc9310babb76f3aac77e67e3459d8ee3abdeac9144150b"
+    "sha256": "b9701f11c7d2ebbf67dedcd1ec11ee3040f30aadc9b8612be315b17181b5e478"
   },
   {
     "path": "/ReplicatedStorage/Shared/ContactSolver",
@@ -52,7 +52,7 @@
   {
     "path": "/ReplicatedStorage/Shared/Items",
     "file": "src/ReplicatedStorage/Shared/Items.luau",
-    "sha256": "89096147a530b6257079b31c368b58bbbeb721442d0be89f4d7b85cf1c0c0642"
+    "sha256": "04715cb4f6b3c1eb65bf719c6b671dd1c3ce686580bb922e78918ec77b8d9ef2"
   },
   {
     "path": "/ReplicatedStorage/Shared/LedgerData",
@@ -75,6 +75,11 @@
     "sha256": "7e5b806434e4b9c3ecd77e41ce678c1b7f2f6acad62f591b2a88c0555f9d9bf2"
   },
   {
+    "path": "/ReplicatedStorage/Shared/PsychosisState",
+    "file": "src/ReplicatedStorage/Shared/PsychosisState.luau",
+    "sha256": "ac8bb8898df061e20f3e54a098cc920a5fe433942845e1ac85f9c80b1a2e9dfe"
+  },
+  {
     "path": "/ReplicatedStorage/Shared/ReplayCodec",
     "file": "src/ReplicatedStorage/Shared/ReplayCodec.luau",
     "sha256": "3b69b4ba86dd15ef70975343195ba830e1107a1d4727d7a2204e99f9700840e0"
@@ -92,7 +97,7 @@
   {
     "path": "/ReplicatedStorage/Shared/Skins",
     "file": "src/ReplicatedStorage/Shared/Skins.luau",
-    "sha256": "855515f05cfc2619a0098f1877bf2b8bcfab9fc9944f7b6de66d44d64c46f44a"
+    "sha256": "9d9f6b7ea6b36392e2143abfa247bbd936d11d69f7e35ef36bda51d9ccdbab80"
   },
   {
     "path": "/ReplicatedStorage/Shared/SoundLibrary",
@@ -107,7 +112,7 @@
   {
     "path": "/ReplicatedStorage/Shared/Titles",
     "file": "src/ReplicatedStorage/Shared/Titles.luau",
-    "sha256": "f744023c5005fdafb1ab94440e4868302de128fd9206cbc4330ef1d44ae424f5"
+    "sha256": "da80a999051d5edc1fd208be9fe50db3000e73a2a3f14d048d77b4e2f325d2c5"
   },
   {
     "path": "/ReplicatedStorage/Shared/Water",
@@ -122,7 +127,7 @@
   {
     "path": "/ServerScriptService/Main",
     "file": "src/ServerScriptService/Main.luau",
-    "sha256": "893c0f4f483a5998aa1d53101aed4b02d98e88a0039010b3d5ae9a1048c9d045"
+    "sha256": "192dbebc29e3168280d7c918fe9d265f89551937e7a690f15173f891efed39ea"
   },
   {
     "path": "/ServerScriptService/Modules/AdminService",
@@ -157,7 +162,7 @@
   {
     "path": "/ServerScriptService/Modules/CameraService",
     "file": "src/ServerScriptService/Modules/CameraService.luau",
-    "sha256": "2d053253588ba17c5ab538580e087889a4a3112d6408f36eb0e8e3b6ce40fdf1"
+    "sha256": "e4e953ec671f202f9eca13b65a38e6caba012136c1906b94534e0d3456d0c03c"
   },
   {
     "path": "/ServerScriptService/Modules/CharacterService",
@@ -167,7 +172,12 @@
   {
     "path": "/ServerScriptService/Modules/ChipService",
     "file": "src/ServerScriptService/Modules/ChipService.luau",
-    "sha256": "dc3ece6aa01922361ef8512f521face79afcab5f73f18fc2acb32fbe5766f372"
+    "sha256": "05f92a7bbb6f406e34e61947ab4693ff7ace309cf4dbed755f21421a71d79272"
+  },
+  {
+    "path": "/ServerScriptService/Modules/ClanService",
+    "file": "src/ServerScriptService/Modules/ClanService.luau",
+    "sha256": "df0a95747118759727402ec5c272b5c1659ca17e2cedf2eea97386851cbe811b"
   },
   {
     "path": "/ServerScriptService/Modules/ComputerService",
@@ -177,7 +187,7 @@
   {
     "path": "/ServerScriptService/Modules/ControlService",
     "file": "src/ServerScriptService/Modules/ControlService.luau",
-    "sha256": "90ee3403b5a1e5d57ffbccdd8ffd4067a117c36a86d3903093722e020dc883e1"
+    "sha256": "8b96c79ae33185480c7e25c106d4c633225eeb59d3a7bc84f4269cb7133582f5"
   },
   {
     "path": "/ServerScriptService/Modules/CraneService",
@@ -197,12 +207,22 @@
   {
     "path": "/ServerScriptService/Modules/CyberService",
     "file": "src/ServerScriptService/Modules/CyberService.luau",
-    "sha256": "220d4d86c07180315a218c73abd411809fd5d62fbd1ce640b641f188458ceb09"
+    "sha256": "cd0558fa551a21d8a6e0a251cbf4c681e6f45a3fe9e0f81e9594f110a3411a0c"
+  },
+  {
+    "path": "/ServerScriptService/Modules/DailyRewardService",
+    "file": "src/ServerScriptService/Modules/DailyRewardService.luau",
+    "sha256": "9822b150d5a2d90eabf2c595ac0c0e9a4b5a4784ace25ae72aa50f3da8c0c47b"
   },
   {
     "path": "/ServerScriptService/Modules/DamageService",
     "file": "src/ServerScriptService/Modules/DamageService.luau",
     "sha256": "7dcda6f46c654457ff37969a261d4bc6e081d4f588f06773f2768efa086488d0"
+  },
+  {
+    "path": "/ServerScriptService/Modules/DirectivePath",
+    "file": "src/ServerScriptService/Modules/DirectivePath.luau",
+    "sha256": "06b9f29649add2c780256b040a519ddfd3861d3c40c2ca9ae3cb21d56c9fb4e1"
   },
   {
     "path": "/ServerScriptService/Modules/DrownService",
@@ -312,7 +332,7 @@
   {
     "path": "/ServerScriptService/Modules/Persist",
     "file": "src/ServerScriptService/Modules/Persist.luau",
-    "sha256": "a3b3fceb471369db745752735e8a3286bc4c657d8af3b6e2c33dd1eefbaab9d0"
+    "sha256": "c7978917719f2e56545d6617479c08705e5e51e09d9bdfb5b1aa5990a69ce827"
   },
   {
     "path": "/ServerScriptService/Modules/ProgressEpoch",
@@ -332,7 +352,7 @@
   {
     "path": "/ServerScriptService/Modules/PsychosisService",
     "file": "src/ServerScriptService/Modules/PsychosisService.luau",
-    "sha256": "21325144d82ee106196e15c28d61b93e19b35f6c71d26ec7199713094e2876f6"
+    "sha256": "5062462b9cb4490c853f9e6f058a9502546c6ab6357ee7485e8019995d609e17"
   },
   {
     "path": "/ServerScriptService/Modules/QuestService",
@@ -352,7 +372,7 @@
   {
     "path": "/ServerScriptService/Modules/RewardService",
     "file": "src/ServerScriptService/Modules/RewardService.luau",
-    "sha256": "4bcf939af7c8de527497458861677a8a4f81fbec46b390b4b0a4370b98d23f2a"
+    "sha256": "0c14ee1a68e0b6353d9a2fd9380780517830dc7c9b00bead3c9c14c039efc2f5"
   },
   {
     "path": "/ServerScriptService/Modules/RigBuilder",
@@ -362,7 +382,7 @@
   {
     "path": "/ServerScriptService/Modules/RipperdocService",
     "file": "src/ServerScriptService/Modules/RipperdocService.luau",
-    "sha256": "cc881befd41df26baf737a403bf1e5ee25fa1cc01af4eeb34e255974b2778487"
+    "sha256": "3cc9c2a6b2fdced0c066fc375a75bd91930abf109545b45282fe0c40371e5577"
   },
   {
     "path": "/ServerScriptService/Modules/RivalService",
@@ -372,7 +392,7 @@
   {
     "path": "/ServerScriptService/Modules/SandevistanService",
     "file": "src/ServerScriptService/Modules/SandevistanService.luau",
-    "sha256": "440c18df3f6831f7f2cb2a2835858c9e8d1442d5eaccf5c193bcdc055f9120c4"
+    "sha256": "ff412fe26f182bc6335b18fa5228effad1f598846d378a2961ad05a8a10b6b69"
   },
   {
     "path": "/ServerScriptService/Modules/SaveGate",
@@ -397,7 +417,7 @@
   {
     "path": "/ServerScriptService/Modules/SkinService",
     "file": "src/ServerScriptService/Modules/SkinService.luau",
-    "sha256": "c1fee7a8468417bb1acec06b2e5c788c0597b7a2c7716a3a8d17421eccb93947"
+    "sha256": "f98d74ee02d09701697db234ea7b8eefd7a3aece331fb503156764c86c3d2f66"
   },
   {
     "path": "/ServerScriptService/Modules/SpineModel",
@@ -482,12 +502,17 @@
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ChipClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ChipClient.luau",
-    "sha256": "c9dcbe34e49a44182d2e40502f94b4609248f446ab266c41d1c7097556df57ff"
+    "sha256": "6ab976606881aacea86e3aea497c0c0bdfb11bfa680ad08ffd5b3c9ec5a02b00"
+  },
+  {
+    "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/CommunityClient",
+    "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/CommunityClient.luau",
+    "sha256": "827ed26b9a1d8b7f4c181284db4a6be533183be8bbcaea232621609ee4a6593c"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ControlClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ControlClient.luau",
-    "sha256": "e964de6371946211dfbb51ac5bba0528969cb9a5482d643f8395d7b5b469f9dc"
+    "sha256": "8a79ada6d257cf713d46f7ac5cf0b38eb2295a441e7e76bd14e555984e788784"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/CreatureFX",
@@ -497,7 +522,7 @@
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/CyberClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/CyberClient.luau",
-    "sha256": "4de7c8809e9b5e2f03eeab6f78e8634fb01a774c7ce26e6dd1c0afbb050307f4"
+    "sha256": "6c63d56c03d849901fd690e451e17238b8fd5767b859abf22eff979751ada280"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/DragClient",
@@ -577,7 +602,7 @@
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Hallucinations",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Hallucinations.luau",
-    "sha256": "31981c5361c623fb4c5e1c08a718a7b816bebfb9c29b1405a17fb88e50c4dc49"
+    "sha256": "b4915e91f36d29c83cf92175161a2e180c1d7c58b0aaea5be1b2c6b7eea340ab"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Hands",
@@ -587,7 +612,7 @@
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Input",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Input.luau",
-    "sha256": "678c5926f0eb2ea2a30860163ecb8288147866811eb5caa97f31fc7e9f0fab9c"
+    "sha256": "7ff5ae891759b9b42a6da28bbff87b4f42534ccf3cfe2b9a5273e88446c76e32"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/JetClient",
@@ -662,7 +687,7 @@
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/PsychosisClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/PsychosisClient.luau",
-    "sha256": "19c39001f2ee71dd2ba9436b44845f15ddc64b298c1e8548da6d113829f5e2fe"
+    "sha256": "700ba76789289aa01216e2d1708dbb5797479b63d6ebb8fb983b81d17b0b65ba"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/QuestClient",
@@ -677,12 +702,12 @@
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ReplayGround",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ReplayGround.luau",
-    "sha256": "a6abb73e7e8da756962e6eee2acf022d0d62ecfa2c9d783c101d86c2f0690eb7"
+    "sha256": "4225fb2ae3571d2eddf27d7ff6d7c3515074868ab35c85803a953d30768cc278"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SandevistanClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SandevistanClient.luau",
-    "sha256": "1dd5fd8cb70db0fff02acb05d0af132484e8aad441add0eea48dd4cbee06abbb"
+    "sha256": "308e6ede7019321ece828340ba4253722a51965c1a22d73c8fb0c625e7f4943a"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/Sensor",
@@ -692,7 +717,7 @@
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SettingsMenu",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/SettingsMenu.luau",
-    "sha256": "bfdbd3b42fa1532959e95e30067be63363c86f0b00555b60f7dba85fcfadb581"
+    "sha256": "fe29f25a55a2ae2b27e00afd8bcc30d5f3af21d7601d2acd611e5f6488c0cd56"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ShopClient",
@@ -747,7 +772,7 @@
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/TitleClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/TitleClient.luau",
-    "sha256": "5c218356fb4cd7856b4fb277acf51c55f528533cf74ad557867c8e0564dbfdf4"
+    "sha256": "a8185d41db825d1c4cf11fd61983a15a080c9fce820e6b2a639409d6339b8311"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ToolFX",

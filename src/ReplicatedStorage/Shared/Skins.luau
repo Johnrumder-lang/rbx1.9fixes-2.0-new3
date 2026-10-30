@@ -18,9 +18,9 @@ Skins.Looks = {
 } :: { [string]: Look }
 
 Skins.List = {
-	{ id = "golden_pistol", name = "Golden Pistol", base = "pistol", item = "pistol_golden", look = "gold", update = "2.0", how = "Code from update 2.0" },
+	{ id = "golden_pistol", name = "Golden Pistol", base = "pistol", item = "pistol_golden", look = "gold", update = "2.0", how = "Retired update 2.0 reward" },
 	-- (v2.9) NEON RIFLE: the cyberdeck update's skin (code: netrunner)
-	{ id = "neon_rifle", name = "Neon Rifle", base = "rifle", item = "rifle_neon", look = "neon", update = "2.9", how = "Code from update 2.9" },
+	{ id = "neon_rifle", name = "Neon Rifle", base = "rifle", item = "rifle_neon", look = "neon", update = "2.9", how = "Retired update 2.9 reward" },
 } :: { Skin }
 
 Skins.ById = {} :: { [string]: Skin }

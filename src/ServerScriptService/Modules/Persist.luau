@@ -13,6 +13,7 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 local Persist = {}
 
 export type Profile = {
+	community: any, -- versioned clans + daily rewards, committed atomically with cash/skins
 	jobsCompleted: number,
 	jobActive: boolean,
 	jobFailedUntil: number,
@@ -42,6 +43,15 @@ local function key(p: Player): string
 	return ProgressEpoch.Key(p.UserId)
 end
 
+local function copy(value)
+	if typeof(value) ~= "table" then return value end
+	local result = {}
+	for k, v in value do result[k] = copy(v) end
+	return result
+end
+local function community(prof)
+	return copy(prof.community or { rev = 0, daily = { date = -1, step = 0, cases = {} } })
+end
 local function encode(prof: Profile): any
 	local owned = {}
 	for id in prof.owned do
@@ -65,7 +75,7 @@ local function encode(prof: Profile): any
 			table.insert(chips, { id = rec.id, tier = rec.tier, slot = rec.slot, payload = rec.payload, target = rec.target })
 		end
 	end
-	return { v = 1, jobActive = prof.jobActive == true, jobFailedUntil = prof.jobFailedUntil or 0, jobs = prof.jobsCompleted or 0, cash = math.floor(prof.cash), owned = owned, eq = eq, lu = prof.ledgerUnlocked, la = prof.ledgerApples, cy = cy, lk = lk,
+	return { v = 1, community = community(prof), jobActive = prof.jobActive == true, jobFailedUntil = prof.jobFailedUntil or 0, jobs = prof.jobsCompleted or 0, cash = math.floor(prof.cash), owned = owned, eq = eq, lu = prof.ledgerUnlocked, la = prof.ledgerApples, cy = cy, lk = lk,
 		sw = prof.sword, sp = prof.swordProg, ch = chips, codes = table.clone(prof.codes or {}) }
 end
 
@@ -106,6 +116,7 @@ local function save(p: Player)
 	local ok, err = pcall(function()
 		(store :: DataStore):UpdateAsync(key(p), function(old)
 			if typeof(old) == "table" then
+				if old.community and (old.community.rev or 0) > (data.community.rev or 0) then return nil end
 				-- Keep redemption receipts when older autosaves race a code claim.
 				for id in old.codes or {} do data.codes[id] = true end
 				-- another server may have saved meanwhile: skins and ledger progress only ever grow
@@ -175,13 +186,14 @@ function Persist.ClaimCode(p: Player, code: string, cash: number, skinIds: { str
 	data.codes[code] = true
 	data.cash += cash
 	for _, id in skinIds do if not table.find(data.owned, id) then table.insert(data.owned, id) end end
-	local claimed, ok = false, true
+	local claimed, ok, stale = false, true, false
 	if store and prof.canSave and SaveGate.CanSave() then
 		ok = pcall(function()
 			store:UpdateAsync(key(p), function(old)
 				claimed = false
 				if typeof(old) == "table" and typeof(old.codes) == "table" and old.codes[code] then return nil end
 				if typeof(old) == "table" then
+					if old.community and (old.community.rev or 0) > (data.community.rev or 0) then stale = true; return nil end
 					for id in old.codes or {} do data.codes[id] = true end
 					for _, id in old.owned or {} do if not table.find(data.owned, id) then table.insert(data.owned, id) end end
 				end
@@ -194,12 +206,67 @@ function Persist.ClaimCode(p: Player, code: string, cash: number, skinIds: { str
 	end
 	saving[p] = nil
 	if not ok then return false, "Could not save the code reward. Try again." end
+	if stale then return false, "Progress changed in another session. Rejoin to synchronize." end
 	if not claimed then prof.codes[code] = true; return false, "You already redeemed this code." end
 	prof.codes[code] = true
 	prof.cash += cash
 	for _, id in skinIds do prof.owned[id] = true end
 	prof.dirty = true
 	return true, "Reward received."
+end
+
+-- Only server services call this. A single receipt/revision commits rewards or clan costs
+-- with the profile. Duplicate callbacks, concurrent sessions and stale autosaves cannot
+-- replay a daily claim or restore a consumed implant voucher / old clan membership.
+function Persist.Community(p: Player)
+	local prof = profiles[p]
+	return prof and prof.loaded and community(prof)
+end
+function Persist.CommitCommunity(p: Player, change, reserve: number?): (boolean, string)
+	local prof = profiles[p]
+	if not prof or not prof.loaded then return false, "Your profile is still loading." end
+	local studio = game:GetService("RunService"):IsStudio()
+	if not studio and (not SaveGate.CanSave() or not store or not prof.canSave) then return false, "Use a public server with saving available." end
+	if saving[p] then return false, "Your profile is saving; try again shortly." end
+	reserve = reserve or 0
+	if prof.cash < reserve then return false, "You need $" .. reserve .. "." end
+	-- Hold the cost before the first yield so other shops cannot spend it meanwhile.
+	prof.cash -= reserve
+	p:SetAttribute("Cash", math.floor(prof.cash))
+	saving[p] = true
+	local snapshot = encode(prof)
+	local expected = snapshot.community.rev or 0
+	local result, reason, latest = nil, "Could not save. Please retry.", nil
+	local function transform(old)
+		result = nil
+		local prior = typeof(old) == "table" and old or {}
+		latest = prior.community
+		if latest and (latest.rev or 0) ~= expected then reason = "Progress changed in another session. Rejoin to synchronize."; return nil end
+		local data = copy(snapshot)
+		for id in prior.codes or {} do data.codes[id] = true end
+		for _, id in prior.owned or {} do if not table.find(data.owned, id) then table.insert(data.owned, id) end end
+		local accepted, message = change(data.community, data)
+		if not accepted then reason = message or "Request rejected."; return nil end
+		data.community.rev = expected + 1
+		result = data; reason = message or "Saved."
+		return data
+	end
+	local ok = pcall(function()
+		if store and prof.canSave and SaveGate.CanSave() then store:UpdateAsync(key(p), transform)
+		else transform(nil) end
+	end)
+	saving[p] = nil
+	if not ok or not result then
+		prof.cash += reserve
+		p:SetAttribute("Cash", math.floor(prof.cash))
+		return false, ok and reason or "Saving failed. Nothing was claimed or charged."
+	end
+	prof.community = result.community
+	prof.cash += result.cash - snapshot.cash
+	for _, id in result.owned do prof.owned[id] = true end
+	prof.dirty = true
+	p:SetAttribute("Cash", math.floor(prof.cash))
+	return true, reason
 end
 
 function Persist.SaveNow(p: Player)
@@ -209,7 +276,7 @@ end
 local function load(p: Player)
 	local prof: Profile = {
 		jobsCompleted = 0, jobActive = false, jobFailedUntil = 0, cash = 0, owned = {}, equipped = {}, ledgerUnlocked = false, ledgerApples = 0, cyber = {}, look = {}, sword = 0, swordProg = 0,
-		chips = {}, codes = {},
+		chips = {}, codes = {}, community = { rev = 0, daily = { date = -1, step = 0, cases = {} } },
 		loaded = false, canSave = false, dirty = false,
 	}
 	profiles[p] = prof
@@ -223,6 +290,7 @@ local function load(p: Player)
 					prof.jobsCompleted = typeof(data.jobs) == "number" and math.clamp(math.floor(data.jobs), 0, 1000000) or 0
 					prof.jobActive = data.jobActive == true
 					prof.jobFailedUntil = typeof(data.jobFailedUntil) == "number" and math.clamp(data.jobFailedUntil, 0, os.time() + 180) or 0
+					if typeof(data.community) == "table" then prof.community = data.community end
 					prof.codes = typeof(data.codes) == "table" and data.codes or {}
 					prof.cash = typeof(data.cash) == "number" and math.max(0, data.cash) or 0
 					for _, id in data.owned or {} do
@@ -297,6 +365,7 @@ function Persist.Reset(p: Player)
 	prof.swordProg = 0
 	prof.chips = {}
 	prof.codes = {}
+	prof.community = { rev = 0, daily = { date = -1, step = 0, cases = {} } }
 	prof.dirty = true
 	p:SetAttribute("Cash", 0)
 	p:SetAttribute("SkinsOwned", "")

@@ -214,6 +214,11 @@ function Input.FireAction(name: string)
 	actionEvent:Fire(name)
 end
 
+-- Called only by the local directive driver; ordinary input remains blocked.
+function Input.ControlJump()
+	if Input.IsControlled() then actionEvent:Fire("Jump") end
+end
+
 -- Mobile buttons: held states
 function Input.SetVirtual(name: string, down: boolean)
 	if Input.IsControlled() then return end

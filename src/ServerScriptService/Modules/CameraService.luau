@@ -31,7 +31,7 @@ type Rec = { item: Model, t0: number, last: number, frames: { any }, seen: { [Mo
 local recording: { [Player]: Rec } = {}
 type Clip = { buf: buffer, slots: number, actors: { any }, center: Vector3, length: number }
 local clips: { [string]: Clip } = {}
-local counter = 0
+local counter, playCounter = 0, 0
 
 local function lensCF(item: Model): CFrame?
 	local body = item.PrimaryPart
@@ -157,8 +157,10 @@ function CameraService.Play(viewer: Player, code: string, trojan: any, attacker:
 		Remote:FireClient(attacker or viewer, "cammsg", "THE CLIP IS GONE.")
 		return
 	end
-	Remote:FireClient(viewer, "videostart", { code = code, slots = clip.slots, actors = clip.actors, center = clip.center, length = clip.length, trojan = trojan ~= nil })
-	Remote:FireClient(viewer, "videodata", code, clip.buf)
+	playCounter += 1
+	local playId = code .. ":" .. playCounter
+	Remote:FireClient(viewer, "videostart", { code = code, playId = playId, slots = clip.slots, actors = clip.actors, center = clip.center, length = clip.length, trojan = trojan ~= nil })
+	Remote:FireClient(viewer, "videodata", playId, clip.buf)
 	if trojan and trojan.payload then
 		task.delay(clip.length + Config.VirusArmTime, function()
 			local v = viewer.Character

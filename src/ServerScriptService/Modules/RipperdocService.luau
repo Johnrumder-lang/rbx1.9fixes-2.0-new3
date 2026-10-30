@@ -303,14 +303,15 @@ local function check(p: Player, opsIn: any): ({ Op }?, number, string?)
 	local list = CyberService.List(p)
 	local ops: { Op } = {}
 	local total = 0
-	local removes, installs = {}, {}
-	for i, o in opsIn do
+	local removes, installs, removing = {}, {}, {}
+	for i, o in ipairs(opsIn) do
 		if i > 8 or typeof(o) ~= "table" then
 			break
 		end
-		if o.op == "out" and typeof(o.key) == "string" and list[o.key] then
+		if o.op == "out" and typeof(o.key) == "string" and list[o.key] and not removing[o.key] then
+			removing[o.key] = true
 			table.insert(removes, { op = "out", key = o.key })
-		elseif o.op == "in" and typeof(o.id) == "string" and typeof(o.tier) == "number" then
+		elseif o.op == "in" and typeof(o.id) == "string" and typeof(o.tier) == "number" and o.tier == o.tier and math.abs(o.tier) < math.huge then
 			local d = Cyberware.ById[o.id]
 			local side = (o.side == "L" or o.side == "R") and o.side or nil
 			if d then
@@ -636,6 +637,7 @@ function RipperdocService.Init(d: any)
 	deps.GearService.OnCyber = onCyber
 
 	Remote.OnServerEvent:Connect(function(p, action, sub, a, b)
+		if p.Character and p.Character:GetAttribute("ControlActive") then return end
 		if action ~= "ripper" then
 			return
 		end

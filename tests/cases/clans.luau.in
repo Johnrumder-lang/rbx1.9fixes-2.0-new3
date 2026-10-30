@@ -1,0 +1,59 @@
+do
+ local roster, records={},{}
+ local function copy(v) if type(v)~="table" then return v end;local c={};for k,x in v do c[k]=copy(x) end;return c end
+ local profileStore={UpdateAsync=function(_,key,fn) local next=fn(copy(records[key]));if next then records[key]=fn(copy(records[key])) end;return copy(records[key]) end}
+ local failRoster=false
+ local clanStore={GetAsync=function(_,key) return copy(roster[key]) end,UpdateAsync=function(_,key,fn) if failRoster then error("down") end;local v=fn(copy(roster[key]));if v then roster[key]=fn(copy(roster[key])) end;return copy(roster[key]) end}
+ local seq=0
+ local services={Players=Players,ReplicatedStorage={Remotes={}},RunService={IsStudio=function() return false end},TextService={FilterStringAsync=function(_,text) return {GetNonChatStringForBroadcastAsync=function() return text end} end},HttpService={GenerateGUID=function() seq+=1;return "uuid"..seq end}}
+ local game={GetService=function(_,name) return services[name] end}
+ local script={Parent={Persist=Persist,ProgressEpoch={Value=0,Store=function() return clanStore end},SaveGate={CanSave=function() return true end}}}
+ local Instance={new=function() return {OnServerEvent=event(),FireClient=function() end} end}
+ local task={spawn=function() end}
+ local Clans=(function()
+ @MODULE:ClanService@
+ end)()
+ local owner=player(241,vec(0,0,0));owner.Name="Owner"
+ local guest=player(242,vec(0,0,0));guest.Name="Guest"
+ local outsider=player(243,vec(0,0,0));outsider.Name="Outsider"
+ Players.list={owner,guest,outsider}
+ local a,b,c=profile(),profile(),profile();a.cash=3000;b.cash=3000;c.cash=0
+ Persist._setup(owner,a,profileStore);Persist._setup(guest,b,profileStore);Persist._setup(outsider,c,profileStore)
+ Clans.Init()
+ check(not Clans._create(outsider,"Broke Clan"),"cannot create clan without 2500")
+ check(not Clans._create(owner,"<script>"),"clan names validated before storage")
+ check(not Clans._create(owner,"###"),"filtered clan names rejected")
+ check(Clans._create(owner,"Night Runners"),"clan creation succeeds")
+ eq(a.cash,500,"clan creation fee charged once")
+ local id=a.community.clan.id
+ eq(roster["e0_"..id].owner,owner.UserId,"founder is clan leader")
+ check(not Clans._create(owner,"Another Clan"),"one clan per player enforced")
+ check(not Clans._invite(guest,outsider.UserId),"nonleader cannot invite")
+ check(not Clans._accept(guest,id),"joining without invitation rejected")
+ check(Clans._invite(owner,guest.UserId),"leader can invite online player")
+ check(Clans._accept(guest,id),"invited player can accept")
+ eq(b.community.clan.id,id,"accepted membership persisted")
+ check(not Clans._accept(guest,id),"duplicate acceptance rejected")
+ eq(b.cash,3000,"invited player joins free")
+ Clans._refresh(guest);eq(guest:GetAttribute("ClanName"),"Night Runners","accepted membership publishes overhead name")
+ check(not Clans._remove(guest,"kick",owner.UserId),"member cannot kick leader")
+ check(not Clans._remove(owner,"leave"),"leader must explicitly disband")
+ check(Clans._remove(guest,"leave"),"member can leave")
+ Clans._refresh(guest);eq(b.community.clan,nil,"leaving clears persistent membership")
+ eq(guest:GetAttribute("ClanName"),nil,"leaving clears overhead tag")
+ check(Clans._invite(owner,guest.UserId),"reinvite former member")
+ check(Clans._accept(guest,id),"member can rejoin")
+ check(Clans._remove(owner,"kick",guest.UserId),"leader can remove member")
+ Clans._refresh(guest);eq(b.community.clan,nil,"removed member cleared on refresh")
+ check(Clans._remove(owner,"disband"),"leader can disband")
+ Clans._refresh(owner);eq(a.community.clan,nil,"disband clears founder membership")
+ check(roster["e0_"..id].disbanded,"disband tombstone prevents accidental recreation")
+ eq(a.cash,500,"disband does not refund creation fee")
+ failRoster=true
+ check(Clans._create(guest,"Retry Clan"),"roster outage preserves paid creation intent")
+ eq(b.cash,500,"pending clan charged only once")
+ local ref=b.community.clan
+ failRoster=false;Clans._refresh(guest)
+ eq(roster["e0_"..ref.id].name,"Retry Clan","pending creation recovers after outage")
+ eq(b.cash,500,"creation recovery never charges again")
+end

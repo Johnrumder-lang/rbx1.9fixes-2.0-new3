@@ -1,0 +1,37 @@
+do
+ local clock=10;local os={clock=function() return clock end}
+ local pending={};local task={spawn=function(fn) table.insert(pending,fn) end}
+ local paths={};local fail=false
+ local Enum={PathStatus={Success="ok"},PathWaypointAction={Jump="jump",Walk="walk"}}
+ local waypoints={{Position=vec(0,0,0),Action="walk"},{Position=vec(0,0,12),Action="walk"},{Position=vec(12,0,12),Action="jump"},{Position=vec(12,0,0),Action="walk"}}
+ local pf={CreatePath=function(_,params)
+  eq(params.AgentCanJump,true,"path agent supports jumps")
+  local path={Blocked=event(),Status="ok",destroyed=false}
+  function path:ComputeAsync() if fail then error("unreachable") end end
+  function path:GetWaypoints() return waypoints end
+  function path:Destroy() self.destroyed=true end
+  table.insert(paths,path);return path
+ end}
+ local game={GetService=function() return pf end}
+ local Nav=(function()
+ @MODULE:DirectivePath@
+ end)()
+ local p=player(221,vec(0,3,0));local root=p.Character.children.Torso
+ local nav=Nav.New();local destination=vec(12,3,0)
+ local goal,moving=Nav.Step(nav,root,destination,18,false)
+ check(not moving and goal==nil,"wait for path instead of walking directly through wall")
+ table.remove(pending,1)()
+ goal,moving=Nav.Step(nav,root,destination,18,false)
+ check(moving,"wall occlusion prevents close-distance early stop")
+ eq(goal.Z,12,"follows detour waypoint around wall")
+ root.Position=vec(0,3,12);local jump;goal,moving,jump=Nav.Step(nav,root,destination,18,false)
+ eq(goal.X,12,"advances path waypoints");check(jump,"jump waypoint reaches controller")
+ local _,stopped=Nav.Step(nav,root,destination,18,true);check(not stopped,"visible target in range stops movement")
+ paths[1].Blocked.callback(nav.index);check(nav.replan,"blocked route requests repath")
+ clock+=2;Nav.Step(nav,root,destination,4,false);eq(#pending,1,"blocked route recalculated with throttle")
+ Nav.Clear(nav);table.remove(pending,1)();check(paths[#paths].destroyed,"cancelled directive disposes asynchronous result")
+ local other=Nav.New();fail=true;Nav.Step(other,root,destination,4,false);table.remove(pending,1)()
+ local _,walk=Nav.Step(other,root,destination,4,false);check(not walk,"failed path does not keep pushing into walls")
+ clock+=3;fail=false;Nav.Step(other,root,destination,4,false);eq(#pending,1,"unreachable destination is retried later")
+ table.remove(pending,1)();Nav.Clear(other)
+end

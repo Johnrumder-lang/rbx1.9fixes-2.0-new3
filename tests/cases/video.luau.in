@@ -1,0 +1,42 @@
+do
+ local clock=0;local os={clock=function() return clock end}
+ local pending={};local task={spawn=function(fn) table.insert(pending,fn) end,wait=function(seconds) clock+=seconds or .1 end}
+ local warn=function() end
+ local Input={freeCursor=false}
+ local player=object("Player");player.children.PlayerGui={}
+ local made,buttons={},{}
+ local UI={make=function(class,props) local o=object(class);for k,v in props do o[k]=v end;table.insert(made,o);return o end}
+ UI.label=function(props) return UI.make("TextLabel",props) end
+ UI.button=function(props,fn) table.insert(buttons,fn);return UI.make("TextButton",props) end
+ local UDim2={new=function() return {} end,fromScale=function() return {} end,fromOffset=function() return {} end}
+ local Vector2={new=function() return {} end}
+ local Enum={TextXAlignment={Right=1},Material={SmoothPlastic=1}}
+ local Instance={new=function(class) return object(class) end}
+ local RunService={RenderStepped={Wait=function() clock+=.1 end}}
+ local groundFails=false
+ local script={Parent={ReplayGround={Copy=function() if groundFails then error("ground failed") end end}}}
+ local workspace={FindFirstChild=function() return nil end}
+ local ReplayCodec={Decode=function() return {{dt=0,cfs={}},{dt=.2,cfs={}}} end,OkCF=function() return false end}
+ local ChipClient={CloseDeck=function() end,CloseComputer=function() end}
+ local RED,CYAN=Color3.new(1,0,0),Color3.new(1,1,1)
+ local messages=0;local function toast() messages+=1 end
+ local Video=(function()
+ @VIDEO@
+ return {Play=playVideo,Data=pendingClip}
+ end)()
+ local function meta(id) return {code="V1",playId=id,slots=0,actors={},length=.2,center=vec(0,0,0)} end
+ local function run() local fn=table.remove(pending,1);if fn then fn() end end
+ Video.Data.first=buffer.create(1);Video.Play(meta("first"));check(Input.freeCursor,"video opens mouse cursor");run()
+ check(not Input.freeCursor,"normal end restores cursor")
+ eq(made[1].Parent,nil,"normal end closes video overlay")
+ Video.Play(meta("skip"));buttons[#buttons]();check(not Input.freeCursor,"SKIP immediately restores cursor before data arrives");run()
+ groundFails=true;Video.Data.bad=buffer.create(1);Video.Play(meta("bad"));run()
+ check(not Input.freeCursor,"construction error cannot trap player behind overlay");eq(messages,1,"construction error gives visible retry message")
+ groundFails=false
+ Video.Play(meta("timeout"));run();check(not Input.freeCursor,"missing video data closes overlay");eq(messages,2,"missing video data gives retry message")
+ Video.Data.older=buffer.create(1);Video.Play(meta("older"));local oldGui=made[#made-32]
+ Video.Data.newer=buffer.create(1);Video.Play(meta("newer"));run()
+ check(Input.freeCursor,"cancelled older playback does not reset newer cursor")
+ check(Video.Data.newer~=nil,"cancelled playback cannot consume newer play-id data")
+ run();check(not Input.freeCursor,"replacement playback ends cleanly")
+end

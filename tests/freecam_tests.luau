@@ -84,7 +84,7 @@ Items.Kinds = {
 	sheath = { name = "SHEATH" }, -- STILLWATER's sheath: wear it in a pocket, put the sword into the same pocket (StillCutService)
 	-- v2.9: the cyberdeck
 	camera = { use = true, name = "VIDEO CAMERA" }, -- F: start / stop filming; a video chip pops out when you stop (CameraService)
-	chip = { use = true, name = "CHIP" }, -- F: play the video on it; grab somebody + F (chip in the other hand): push it into them (ChipService)
+	chip = { use = true, name = "CHIP" }, -- F: store any chip in the deck; grab somebody + F (chip in the other hand): push it into them (ChipService)
 	computer = { use = true, name = "COMPUTER" }, -- set it down; F (or the prompt) opens it: buy / program chips (ComputerService)
 }
 

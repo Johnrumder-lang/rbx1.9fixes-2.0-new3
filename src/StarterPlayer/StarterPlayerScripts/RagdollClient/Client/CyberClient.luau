@@ -833,14 +833,17 @@ Input.ArmAimHook = function(self, side: string, shoulder: Vector3, _heading: CFr
 	return nil, nil
 end
 
+local crashTween
 local function crashOut(dur: number)
+	if require(Shared.PsychosisState).Level(player) <= 0 then return end
 	toast("CRASH OUT", RED)
 	SoundLibrary.Play("heartbeat", nil, 1)
 	local o = overlay
 	o.BackgroundColor3 = Color3.fromRGB(160, 0, 0)
 	o.BackgroundTransparency = 0.55
-	TweenService:Create(o, TweenInfo.new(dur, Enum.EasingStyle.Linear), { BackgroundTransparency = 1 }):Play()
-	Hallucinations.Force(dur + 4, 1)
+	if crashTween then crashTween:Cancel() end
+	crashTween = TweenService:Create(o, TweenInfo.new(dur, Enum.EasingStyle.Linear), { BackgroundTransparency = 1 }); crashTween:Play()
+	Hallucinations.Force(dur + 4, 1, "overload")
 	-- ControlService supplies the single authoritative movement/aim directive.
 
 end
@@ -911,13 +914,13 @@ end
 
 local nextEpisode = os.clock() + 25
 local function updatePsycho()
-	local v = player:GetAttribute("CyPsycho")
-	local ps = typeof(v) == "number" and v or 0
+	local ps = require(Shared.PsychosisState).Level(player)
+	if ps <= 0 and crashTween then crashTween:Cancel(); crashTween = nil; overlay.BackgroundTransparency = 1 end
 	psychoFill.Size = UDim2.fromScale(math.clamp(ps, 0, 1), 1)
 	psychoText.Text = string.format("PSYCHOSIS %d%%", math.floor(ps * 100))
 	if ps > 0.12 and os.clock() > nextEpisode and Settings.Get("hallucinations") ~= false then
 		nextEpisode = os.clock() + rng:NextNumber(18, 50) * (1.3 - ps)
-		Hallucinations.Force(6 + 18 * ps, math.clamp(ps, 0.15, 1))
+		Hallucinations.Force(6 + 18 * ps, math.clamp(ps, 0.15, 1), "overload")
 	end
 end
 
@@ -1511,6 +1514,38 @@ local function buildShop()
 		return out
 	end
 	local refresh: () -> ()
+	local removalPanel
+	UI.button({ Text = "UNINSTALL CYBERWARE", TextSize = 12, Position = UDim2.fromOffset(10, 378), Size = UDim2.new(1, -20, 0, 32), BackgroundColor3 = STEEL, ZIndex = 6, Parent = chart }, function()
+		if removalPanel then removalPanel:Destroy() end
+		removalPanel = UI.panel({ Position = UDim2.fromOffset(274, 60), Size = UDim2.fromOffset(262, 448), BackgroundColor3 = GRIME, ZIndex = 20, Parent = shop })
+		UI.label({ Text = "UNINSTALL", TextSize = 20, Position = UDim2.fromOffset(10, 8), Size = UDim2.fromOffset(190, 26), ZIndex = 21, Parent = removalPanel })
+		UI.button({ Text = "X", Position = UDim2.fromOffset(224, 8), Size = UDim2.fromOffset(28, 26), ZIndex = 21, Parent = removalPanel }, function() removalPanel:Destroy(); removalPanel = nil end)
+		UI.label({ Text = "Choose an implant to add its removal to your slip. Sign the list, then lie on the operating table.", TextSize = 12, TextWrapped = true, Position = UDim2.fromOffset(10, 42), Size = UDim2.new(1, -20, 0, 66), ZIndex = 21, Parent = removalPanel })
+		local list = UI.make("ScrollingFrame", { Position = UDim2.fromOffset(10, 116), Size = UDim2.new(1, -20, 1, -126), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 4, CanvasSize = UDim2.fromOffset(0, 0), ZIndex = 21, Parent = removalPanel })
+		local owned = myList()
+		local keys = {}; for key in owned do table.insert(keys, key) end; table.sort(keys)
+		local y = 0
+		for _, key in keys do
+			local id, side = Cyberware.Split(key)
+			local def = Cyberware.ById[id]
+			if def then
+				local price = math.floor(Cyberware.Price(id, owned[key]) * Config.CyberRemoveShare)
+				UI.button({ Text = def.name .. (side and (" · " .. side) or "") .. " T" .. owned[key] .. "\nUNINSTALL · $" .. price, TextSize = 12, TextWrapped = true, Position = UDim2.fromOffset(0, y), Size = UDim2.new(1, -6, 0, 48), ZIndex = 22, Parent = list }, function()
+					for i = #cart, 1, -1 do
+						local op = cart[i]
+						if (op.op == "out" and op.key == key) or (op.op == "in" and Cyberware.Key(op.id, op.side) == key) then table.remove(cart, i) end
+					end
+					if #cart >= 8 then toast("MAXIMUM 8 OPERATIONS PER VISIT", RED); return end
+					table.insert(cart, { op = "out", key = key })
+					removalPanel:Destroy(); removalPanel = nil
+					refresh(); toast("REMOVAL ADDED. SIGN THE LIST, THEN LIE ON THE TABLE.", CYAN)
+				end)
+				y += 54
+			end
+		end
+		if y == 0 then UI.label({ Text = "No installed cyberware.", TextSize = 14, Size = UDim2.new(1, 0, 0, 40), ZIndex = 22, Parent = list }) end
+		list.CanvasSize = UDim2.fromOffset(0, y + 10)
+	end)
 	local function pickSlot(slotId: string, side: string?)
 		local defs = slotDefs(slotId)
 		if #defs == 0 then
@@ -1646,7 +1681,7 @@ local function buildShop()
 			refresh()
 		end)
 		if mine[key] then
-			UI.button({ Text = "ON THE SLIP: TAKE IT OUT  $" .. math.floor(Cyberware.Price(d.id, mine[key]) * Config.CyberRemoveShare), TextSize = 12,
+			UI.button({ Text = "UNINSTALL THIS IMPLANT  $" .. math.floor(Cyberware.Price(d.id, mine[key]) * Config.CyberRemoveShare), TextSize = 12,
 				BackgroundColor3 = STEEL, Position = UDim2.fromOffset(0, 34), Size = UDim2.new(1, 0, 0, 28), ZIndex = 4, Parent = actRow }, function()
 				clearKey()
 				table.insert(cart, { op = "out", key = key })

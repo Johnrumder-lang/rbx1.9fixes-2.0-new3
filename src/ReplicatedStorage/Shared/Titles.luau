@@ -36,7 +36,7 @@ end
 
 Titles.List = {
 	{ id = "dev", name = "DEV", color = c(255, 255, 255), color2 = c(255, 50, 50), style = "glow", source = "owner", how = "The game's owner", hidden = true },
-	{ id = "og", name = "OG", color = c(255, 200, 40), color2 = c(255, 250, 210), style = "shine", source = "code", how = "Code from update 2.0" },
+	{ id = "og", name = "OG", color = c(255, 200, 40), color2 = c(255, 250, 210), style = "shine", source = "code", how = "Retired update 2.0 reward" },
 	{ id = "spin", name = "SPIN ADEPT", color = c(70, 230, 120), color2 = c(255, 214, 70), style = "glow", source = "quest", how = "Learn the Spin from the Steel Ball Master" },
 	{ id = "stillwater", name = "STILLWATER", color = c(150, 210, 255), color2 = c(255, 255, 255), style = "glow", source = "quest", how = "Beat the Pale Heir in the Pit" }, -- (v2.8)
 

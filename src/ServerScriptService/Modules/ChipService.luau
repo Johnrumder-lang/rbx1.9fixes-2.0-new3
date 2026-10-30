@@ -1,5 +1,5 @@
 --!nonstrict
--- ChipService (v2.9): the cyberdeck. Everything about neck chips (Shared/Chips) - the 4 slots, buying and programming
+-- ChipService (v2.9): the cyberdeck. Everything about neck chips (Shared/Chips) - the 6 slots, buying and programming
 -- them, the netrunner quickhacks, viruses, the REFLEX BUFFER dodge, the FIREWALL, and the Blackwall.
 --   * every player has Config.ChipSlots (4) neck slots and a bag of chips they own. Both are kept in the profile
 --     (Persist) so they come back - videos are the exception (they live for the session only).
@@ -232,7 +232,7 @@ local function smite(p: Player)
 end
 
 function ChipService.Install(p: Player, uid: number, slot: number): string?
-	if typeof(slot) ~= "number" or slot < 1 or slot > Config.ChipSlots then
+	if typeof(slot) ~= "number" or slot % 1 ~= 0 or slot < 1 or slot > Config.ChipSlots then
 		return "bad slot"
 	end
 	local st = stOf(p)
@@ -266,6 +266,7 @@ function ChipService.Install(p: Player, uid: number, slot: number): string?
 end
 
 function ChipService.Eject(p: Player, slot: number)
+	if typeof(slot) ~= "number" or slot % 1 ~= 0 or slot < 1 or slot > Config.ChipSlots then return end
 	local st = stOf(p)
 	local chip = st.slots[slot]
 	if not chip then
@@ -333,11 +334,17 @@ end
 local function chipOfItem(item: Model): Chip?
 	local id = item:GetAttribute("ChipId")
 	if typeof(id) ~= "string" then
-		return nil
+		if item:GetAttribute("Item") ~= "chip" then return nil end
+		-- Spawn-menu blank chips did not have a ChipId and F silently ignored them.
+		local chip = newChip("blank", 1)
+		ChipService.Dress(item, chip)
+		return chip
 	end
+	local definition = Chips.ById[id]
+	if not definition and id ~= "video" and id ~= "virus" then return nil end
 	return {
 		uid = typeof(item:GetAttribute("ChipUid")) == "number" and item:GetAttribute("ChipUid") or nextUid(),
-		id = id, kind = typeof(item:GetAttribute("ChipKind")) == "string" and item:GetAttribute("ChipKind") or "blank",
+		id = id, kind = typeof(item:GetAttribute("ChipKind")) == "string" and item:GetAttribute("ChipKind") or (definition and definition.kind or id),
 		tier = typeof(item:GetAttribute("ChipTier")) == "number" and item:GetAttribute("ChipTier") or 1,
 		name = item:GetAttribute("ChipName"), payload = item:GetAttribute("ChipPayload"),
 		target = item:GetAttribute("ChipTarget"), clip = item:GetAttribute("ChipClip"), trojan = item:GetAttribute("ChipTrojan") == true,
@@ -618,6 +625,24 @@ local function victimOf(userId: any): Model?
 	return p and p.Character or nil
 end
 
+local function upload(p, slot, chip, victim, activate)
+	local character = p.Character
+	local targetPlayer = Players:GetPlayerFromCharacter(victim)
+	local untilT = workspace:GetServerTimeNow() + Config.QuickhackDelay
+	p:SetAttribute("ChipUpload_" .. slot, untilT)
+	say(p, "UPLOADING — " .. Config.QuickhackDelay .. " SECONDS. KEEP THE TARGET IN SIGHT.")
+	task.delay(Config.QuickhackDelay, function()
+		if p:GetAttribute("ChipUpload_" .. slot) == untilT then p:SetAttribute("ChipUpload_" .. slot, nil) end
+		if not p.Parent or p.Character ~= character or not victim.Parent or (targetPlayer and targetPlayer.Character ~= victim) then return end
+		local st = states[p]
+		local off = character and character:GetAttribute("ChipsDisabled")
+		if not st or st.slots[slot] ~= chip or (typeof(off) == "number" and off > workspace:GetServerTimeNow()) or not linked(p, victim) then
+			say(p, "UPLOAD CANCELLED — LINK OR CHIP LOST."); return
+		end
+		activate()
+	end)
+end
+
 function ChipService.Quickhack(p: Player, slot: any, targetUserId: any)
 	local st = stOf(p)
 	local chip = typeof(slot) == "number" and st.slots[slot] or nil
@@ -656,10 +681,10 @@ function ChipService.Quickhack(p: Player, slot: any, targetUserId: any)
 	p:SetAttribute("ChipCD_" .. slot, workspace:GetServerTimeNow() + (def.cooldown and def.cooldown[chip.tier] or 12))
 	-- the uplink line shown to everybody
 	Remote:FireAllClients("uplink", p.UserId, targetUserId, Chips.Color(def))
-	local landed = ChipService.Hit(victim, effect, chip.tier, p, true)
-	if landed then
-		say(p, def.ability .. " ON " .. string.upper(vp and vp.DisplayName or "TARGET"))
-	end
+	upload(p, slot, chip, victim, function()
+		local landed = ChipService.Hit(victim, effect, chip.tier, p, true)
+		if landed then say(p, def.ability .. " ON " .. string.upper(vp and vp.DisplayName or "TARGET")) end
+	end)
 end
 
 ------------------------------------------------------------------------
@@ -699,16 +724,19 @@ function ChipService.Unleash(p: Player, slot: any, targetUserId: any)
 	if typeof(off) == "number" and off > workspace:GetServerTimeNow() then return end
 	cd[p]["bw"] = now + 20
 	p:SetAttribute("ChipCD_" .. slot, workspace:GetServerTimeNow() + 20)
-	ChipService.BlackwallBeam(vt.Position)
-	Remote:FireClient(p, "msg", "BLACKWALL RELEASED.")
-	task.delay(0.8, function()
-		if victim.Parent and not victim:GetAttribute("Dead") then
-			ChipService.Ash(victim)
-			victim:SetAttribute("ForceKill", true)
-			victim:SetAttribute("NoRegrowth", true)
-			deps.DamageService.MarkAttacker(victim, p)
-			deps.DamageService.Kill(victim, "Erased by the Blackwall")
-		end
+	upload(p, slot, chip, victim, function()
+		if not Items.IsOwner(p) then return end
+		ChipService.BlackwallBeam(vt.Position)
+		Remote:FireClient(p, "msg", "BLACKWALL RELEASED.")
+		task.delay(0.8, function()
+			if victim.Parent and not victim:GetAttribute("Dead") then
+				ChipService.Ash(victim)
+				victim:SetAttribute("ForceKill", true)
+				victim:SetAttribute("NoRegrowth", true)
+				deps.DamageService.MarkAttacker(victim, p)
+				deps.DamageService.Kill(victim, "Erased by the Blackwall")
+			end
+		end)
 	end)
 end
 
@@ -727,7 +755,7 @@ local function returnChipToBag(p: Player, item: Model, chip: Chip)
 	changed(p)
 end
 
--- F with a chip in hand, nobody grabbed: play its video for yourself
+-- F with any held chip stores it and opens the deck. Videos use the deck PLAY button.
 function ChipService.PlayHeld(p: Player, item: Model)
 	if deps.OwnershipService.ItemHolder(item) ~= p then
 		return
@@ -948,7 +976,7 @@ function ChipService.Init(d: any)
 				if typeof(rec) == "table" and typeof(rec.id) == "string" and (Chips.ById[rec.id] or rec.id == "virus") then
 					local chip = newChip(rec.id, typeof(rec.tier) == "number" and rec.tier or 1, { payload = rec.payload, target = rec.target })
 					local slot = typeof(rec.slot) == "number" and rec.slot or 0
-					if slot >= 1 and slot <= Config.ChipSlots and not st.slots[slot] and SLOTTABLE[chip.kind] then
+					if slot % 1 == 0 and slot >= 1 and slot <= Config.ChipSlots and not st.slots[slot] and SLOTTABLE[chip.kind] then
 						st.slots[slot] = chip
 						if chip.id == "dodge" then
 							st.dodgeLeft = chip.tier

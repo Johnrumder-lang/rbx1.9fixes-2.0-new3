@@ -1,6 +1,7 @@
 do
  local clock=4000;workspace.GetServerTimeNow=function() return clock end
  local game={ReplicatedStorage={Shared={Items=Items,Config=Config}},GetService=function(_,n) return n=="Players" and Players or {} end}
+ local script={Parent={DirectivePath={New=function() return {} end,Clear=function() end}}}
  local task={spawn=function() end}
  local Service=(function()
  @MODULE:ControlService@

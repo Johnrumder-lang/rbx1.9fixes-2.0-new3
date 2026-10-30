@@ -1,0 +1,22 @@
+do
+ local terrain=object("Terrain");terrain.Archivable=true
+ function terrain:IsA(c) return c=="BasePart" or c=="Terrain" end
+ function terrain:Clone() error("Cannot Clone() Terrain") end
+ local floor=object("Part");floor.Archivable=true;floor.Anchored=true;floor.Transparency=0;floor.Size=vec(100,2,100)
+ function floor:IsA(c) return c=="BasePart" or c=="Part" end
+ floor.CFrame={PointToObjectSpace=function(_,v) return v end}
+ local clone=object("Part");local cloned=0
+ function floor:Clone() cloned+=1;return clone end
+ local vm2={__div=function(a,n) return vec(a.X/n,a.Y/n,a.Z/n) end};setmetatable(floor.Size,vm2)
+ local workspace={GetChildren=function() return {terrain,floor} end}
+ local Ground=(function()
+ @MODULE:ReplayGround@
+ end)()
+ local viewport={}
+ Ground.Copy(viewport,vec(0,1,0),80)
+ eq(cloned,1,"replay copies baseplate while skipping Terrain")
+ eq(clone.Parent,viewport,"floor reaches viewport after terrain in child order")
+ eq(clone.CanCollide,false,"replay ground has no live collision")
+ floor.Clone=function() error("instance destroyed") end
+ check(pcall(function() Ground.Copy(viewport,vec(0,1,0),80) end),"individual clone failure cannot abort replay")
+end

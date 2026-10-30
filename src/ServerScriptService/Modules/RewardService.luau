@@ -28,13 +28,11 @@ local RewardRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Rew
 local RewardService = {}
 
 -- THE CODES OF THIS UPDATE (written in lower case; what people type is lower-cased and trimmed).
--- Next update: take "update2" out, put the new update's code in with the new skin (Shared/Skins). "2.0" (the title
--- OG) goes too: OG is for whoever was there at 2.0.
+-- Legacy 2.0 / update2 codes are retired; already-earned rewards stay owned.
 RewardService.CODES = {
-	-- (v2.9) the previous update's skin code is retired; the new one unlocks the NEON RIFLE
 	["netrunner"] = { bundle = true },
 	["chips"] = { bundle = true },
-	["2.0"] = { title = "og" },
+	["fixes"] = { bundle = true },
 } :: { [string]: { skin: string?, title: string?, bundle: boolean? } }
 
 type Profile = {

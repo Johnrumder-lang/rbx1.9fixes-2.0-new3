@@ -146,7 +146,7 @@ local function publish(p: Player)
 		table.sort(parts)
 		return table.concat(parts, ";")
 	end)())
-	p:SetAttribute("CyLoad", immune(p) and 0 or Cyberware.Load(st.list))
+	p:SetAttribute("CyLoad", Cyberware.Load(st.list))
 	p:SetAttribute("CyTol", tolerance(p))
 end
 
@@ -926,7 +926,7 @@ end
 
 local function maybeCrash(p: Player, why: string)
 	local st = states[p]
-	if not st or immune(p) or st.psycho < 0.2 then
+	if not st or immune(p) or Cyberware.Load(st.list) <= tolerance(p) or st.psycho < 0.2 then
 		return
 	end
 	local now = os.clock()
@@ -941,6 +941,7 @@ local function maybeCrash(p: Player, why: string)
 		return
 	end
 	st.lastCrash = now
+	char:SetAttribute("CrashOutSource", "psychosis")
 	char:SetAttribute("CrashOut", workspace:GetServerTimeNow() + Config.CrashOutTime)
 	Remote:FireClient(p, "crash", Config.CrashOutTime, why)
 	task.delay(Config.CrashOutTime, function()
@@ -1290,7 +1291,7 @@ end
 function CyberService.AdminPsychosis(p: Player, enabled: boolean)
 	if not Items.IsOwner(p) then return end
 	local st = stOf(p)
-	if not enabled or Cyberware.Load(st.list) <= 0 then st.psycho = 0 end
+	if not enabled or Cyberware.Load(st.list) <= tolerance(p) then st.psycho = 0 end
 	publish(p)
 	p:SetAttribute("CyPsycho", st.psycho > 0 and st.psycho or nil)
 end
@@ -1475,8 +1476,8 @@ function CyberService.Init(d: any)
 						pcall(deps.DamageService.StopBleeding, char)
 					end
 				end
-				-- psychosis
-				if immune(p) or Cyberware.Load(st.list) <= 0 then
+				-- psychosis: exactly at capacity is safe, including any old residual episode.
+				if immune(p) or Cyberware.Load(st.list) <= tolerance(p) then
 					st.psycho = 0
 				else
 					local over = Cyberware.Load(st.list) - tolerance(p)
@@ -1486,11 +1487,12 @@ function CyberService.Init(d: any)
 						st.psycho = math.max(0, st.psycho - Config.PsychoDecay * 0.5)
 					end
 				end
+				p:SetAttribute("CyTol", tolerance(p))
 				local shown = math.floor(st.psycho * 100 + 0.5) / 100
 				if p:GetAttribute("CyPsycho") ~= shown then
 					p:SetAttribute("CyPsycho", shown > 0 and shown or nil)
 				end
-				p:SetAttribute("CyLoad", immune(p) and 0 or Cyberware.Load(st.list))
+				p:SetAttribute("CyLoad", Cyberware.Load(st.list))
 				if char and st.psycho >= 0.7 then maybeCrash(p, "neural overload") end
 				if char and st.psycho >= 0.2 then
 					local by = char:GetAttribute("DraggedBy")

@@ -1,6 +1,6 @@
 --!nonstrict
 -- ChipClient (v2.9): everything you see and press of the cyberdeck.
---   * K: the CYBERDECK - your 4 neck slots, your chips, and the NETRUNNER INTERFACE (nearby targets + their firewall,
+--   * K: the CYBERDECK - your 6 neck slots, your chips, and the NETRUNNER INTERFACE (nearby targets + their firewall,
 --     your quickhacks, the Blackwall for admins). Sharp panels, the game font.
 --   * SCANNER / ZOOM: toggles (combat chips). SCANNER boxes and names everything on screen; ZOOM pulls the view in.
 --   * REFLEX BUFFER: a flash when it dodges a bullet for you.
@@ -220,18 +220,23 @@ local function startHackControls()
 		return Enum.ContextActionResult.Sink
 	end, false, 4000, Enum.KeyCode.F4)
 	CAS:BindActionAtPriority("HeldChipCamera", function(_, state)
-		if hackMode or Input.IsControlled() or Input.menuOpen or UserInputService:GetFocusedTextBox() then return Enum.ContextActionResult.Pass end
+		if Input.IsControlled() or Input.menuOpen or UserInputService:GetFocusedTextBox() then return Enum.ContextActionResult.Pass end
+		local held, kind
 		if controller and controller.hands then
 			for _, side in { "Left", "Right" } do
 				local hand = controller.hands[side]
-				local grip = hand and hand.grip
-				local item = grip and grip.item
-				local kind = item and item.Parent and Items.Kind(item)
-				if kind == "chip" or kind == "camera" then
-					if state == Enum.UserInputState.Begin then Remote:FireServer(kind == "chip" and "helduse" or "cam", item) end
-					return Enum.ContextActionResult.Sink
-				end
+				local item = hand and hand.grip and hand.grip.item
+				local found = item and item.Parent and Items.Kind(item)
+				if found == "chip" then held, kind = item, found; break end
+				if found == "camera" then held, kind = item, found end
 			end
+		end
+		if held then
+			if state == Enum.UserInputState.Begin then
+				if kind == "chip" then setHackMode(false) end
+				Remote:FireServer(kind == "chip" and "helduse" or "cam", held)
+			end
+			return Enum.ContextActionResult.Sink
 		end
 		return Enum.ContextActionResult.Pass
 	end, false, 4500, Enum.KeyCode.F, Enum.KeyCode.ButtonX)
@@ -288,7 +293,7 @@ local function startHackControls()
 		for i, choice in choices do
 			local def = Chips.ById[choice.chip.id]
 			local left = math.max(0, (player:GetAttribute("ChipCD_" .. choice.slot) or 0) - now())
-			table.insert(lines, (i == hackIndex and "> " or "   ") .. def.name .. " T" .. choice.chip.tier .. (left > 0 and ("  " .. math.ceil(left) .. "s") or ""))
+			table.insert(lines, (i == hackIndex and "> " or "   ") .. def.name .. " T" .. choice.chip.tier .. ((player:GetAttribute("ChipUpload_" .. choice.slot) or 0) > workspace:GetServerTimeNow() and ("  UPLOAD " .. math.ceil(player:GetAttribute("ChipUpload_" .. choice.slot) - workspace:GetServerTimeNow()) .. "s") or (left > 0 and ("  " .. math.ceil(left) .. "s") or "")))
 		end
 		hackList.Text = #lines > 0 and table.concat(lines, "\n") or "NO QUICKHACKS INSTALLED\nOpen K to install a chip."
 	end)
@@ -320,11 +325,11 @@ local function buildDeck()
 	-- NECK SLOTS
 	UI.label({ Text = "NECK SLOTS", TextSize = 13, TextColor3 = C.amber, Position = UDim2.fromOffset(16, 44), Size = UDim2.fromOffset(240, 16), Parent = panel })
 	for i = 1, Config.ChipSlots do
-		local row = UI.make("Frame", { Name = "Slot" .. i, BackgroundColor3 = PANEL2, BorderSizePixel = 0, Position = UDim2.fromOffset(16, 64 + (i - 1) * 42), Size = UDim2.fromOffset(250, 38), Parent = panel })
+		local row = UI.make("Frame", { Name = "Slot" .. i, BackgroundColor3 = PANEL2, BorderSizePixel = 0, Position = UDim2.fromOffset(16, 64 + (i - 1) * 60), Size = UDim2.fromOffset(250, 56), Parent = panel })
 		UI.make("UIStroke", { Color = Color3.fromRGB(60, 64, 72), Thickness = 1, Parent = row })
-		UI.label({ Name = "Name", Text = "", TextSize = 13, Position = UDim2.fromOffset(8, 3), Size = UDim2.new(1, -70, 0, 16), Parent = row })
-		UI.label({ Name = "Sub", Text = "", TextSize = 10, TextColor3 = C.dim, Position = UDim2.fromOffset(8, 20), Size = UDim2.new(1, -70, 0, 14), Parent = row })
-		UI.button({ Name = "Act", Text = "", TextSize = 11, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -6, 0.5, 0), Size = UDim2.fromOffset(56, 28), Parent = row }, function()
+		UI.label({ Name = "Name", Text = "", TextSize = 13, Position = UDim2.fromOffset(8, 3), Size = UDim2.new(1, -16, 0, 18), TextTruncate = Enum.TextTruncate.AtEnd, Parent = row })
+		UI.label({ Name = "Sub", Text = "", TextSize = 10, TextColor3 = C.dim, Position = UDim2.fromOffset(8, 32), Size = UDim2.fromOffset(104, 16), Parent = row })
+		UI.button({ Name = "Act", Text = "", TextSize = 11, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -70, 0, 28), Size = UDim2.fromOffset(56, 22), Parent = row }, function()
 			local chip = deck.slots[i]
 			if chip then
 				if chip.id == "zoom" then
@@ -337,6 +342,13 @@ local function buildDeck()
 			end
 			if deckRefresh then
 				deckRefresh()
+			end
+		end)
+		UI.button({ Name = "Eject", Text = "EJECT", TextSize = 11, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 28), Size = UDim2.fromOffset(58, 22), Parent = row }, function()
+			local chip = deck.slots[i]
+			if chip then
+				if chip.id == "scan" then scanOn = false elseif chip.id == "zoom" then zoomOn = false end
+				Remote:FireServer("eject", i)
 			end
 		end)
 		slotRows[i] = row
@@ -372,6 +384,8 @@ local function buildDeck()
 			local nameL = row:FindFirstChild("Name") :: TextLabel
 			local subL = row:FindFirstChild("Sub") :: TextLabel
 			local act = row:FindFirstChild("Act") :: TextButton
+			act.Visible = typeof(chip) == "table" and (chip.id == "zoom" or chip.id == "scan")
+			row:FindFirstChild("Eject").Visible = typeof(chip) == "table"
 			if chip then
 				local def = Chips.ById[chip.id]
 				nameL.Text = (chip.name or chip.id) .. "  T" .. chip.tier
@@ -436,7 +450,7 @@ local function buildDeck()
 		end
 		bagList.CanvasSize = UDim2.fromOffset(0, h + 6)
 		netList:ClearAllChildren()
-		UI.label({ Text = "F4  ENTER QUICKHACK MODE\n\nAim at a player to lock.\nScroll to select an installed hack.\nF executes the selected hack.\nF4 exits targeting mode.", TextSize = 15, TextWrapped = true, Position = UDim2.fromOffset(10, 10), Size = UDim2.new(1, -20, 1, -20), TextYAlignment = Enum.TextYAlignment.Top, Parent = netList })
+		UI.label({ Text = "F4  ENTER QUICKHACK MODE\n\nAim at a player to lock.\nScroll to select an installed hack.\nF uploads it (5 seconds).\nF4 exits targeting mode.", TextSize = 15, TextWrapped = true, Position = UDim2.fromOffset(10, 10), Size = UDim2.new(1, -20, 1, -20), TextYAlignment = Enum.TextYAlignment.Top, Parent = netList })
 		hackRow:ClearAllChildren()
 		UI.label({ Text = "Install netrunner chips into your neck slots.\nThe target must stay in sight and in range.\nAdmins can be hacked too.", TextSize = 14, TextWrapped = true, Size = UDim2.new(1, -12, 1, -12), TextYAlignment = Enum.TextYAlignment.Top, Parent = hackRow })
 	end
@@ -948,11 +962,23 @@ end
 
 local videoToken = 0
 local pendingClip: { [string]: buffer } = {}
+local closeVideo
 
 local function playVideo(meta: any)
+	if typeof(meta.slots) ~= "number" or meta.slots % 1 ~= 0 or meta.slots < 0 or meta.slots > 36 then toast("VIDEO DATA INVALID", RED); return end
+	if closeVideo then closeVideo() end
+	ChipClient.CloseDeck(); ChipClient.CloseComputer()
+	local dataKey = meta.playId or meta.code
 	videoToken += 1
 	local my = videoToken
 	local g = UI.make("ScreenGui", { Name = "VideoPlay", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 35, Parent = player:WaitForChild("PlayerGui") })
+	local function cleanup()
+		if g.Parent then g:Destroy() end
+		if my == videoToken then
+			videoToken += 1; closeVideo = nil; Input.freeCursor = false
+		end
+	end
+	closeVideo = cleanup
 	local bg = UI.make("Frame", { BackgroundColor3 = Color3.fromRGB(2, 3, 4), BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ClipsDescendants = true, Parent = g })
 	local vp = UI.make("ViewportFrame", { BackgroundColor3 = Color3.fromRGB(80, 100, 120), BorderSizePixel = 0, Size = UDim2.fromScale(1, 1),
 		Ambient = Color3.fromRGB(150, 150, 160), LightColor = Color3.fromRGB(255, 250, 240), LightDirection = Vector3.new(-0.4, -1, -0.3), Parent = bg })
@@ -962,144 +988,144 @@ local function playVideo(meta: any)
 		UI.make("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.85, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 1), Position = UDim2.fromScale(0, i / 29), ZIndex = 4, Parent = bg })
 	end
 	local close = UI.button({ Text = "SKIP", TextSize = 12, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -16), Size = UDim2.fromOffset(100, 26), BackgroundColor3 = Color3.fromRGB(60, 62, 70), ZIndex = 5, Parent = bg }, function()
-		videoToken += 1
-		g:Destroy()
+		cleanup()
 	end)
 	Input.freeCursor = true
 
 	task.spawn(function()
-		-- wait for the data
-		local t0 = os.clock()
-		while not pendingClip[meta.code] and os.clock() - t0 < 4 and my == videoToken do
-			task.wait(0.05)
-		end
-		local buf = pendingClip[meta.code]
-		pendingClip[meta.code] = nil
-		if my ~= videoToken or not buf then
-			if g.Parent then
-				g:Destroy()
+		local ok, err = pcall(function()
+			-- wait for the data
+			local t0 = os.clock()
+			while not pendingClip[dataKey] and os.clock() - t0 < 10 and my == videoToken do
+				task.wait(0.05)
 			end
-			Input.freeCursor = false
-			return
-		end
-		local frames = ReplayCodec.Decode(buf, meta.slots)
-		if #frames < 2 then
-			g:Destroy()
-			Input.freeCursor = false
-			return
-		end
-		local cam = Instance.new("Camera")
-		cam.FieldOfView = 70
-		cam.Parent = vp
-		vp.CurrentCamera = cam
-		-- the place round the scene (copied from this machine's own map)
-		local center = typeof(meta.center) == "Vector3" and meta.center or Vector3.zero
-		require(script.Parent.ReplayGround).Copy(vp, center, 120)
-		local map = workspace:FindFirstChild("Map")
-		if map then
-			local op = OverlapParams.new()
-			op.FilterType = Enum.RaycastFilterType.Include
-			op.FilterDescendantsInstances = { map }
-			local okp, parts = pcall(function()
-				return workspace:GetPartBoundsInRadius(center, 120, op)
-			end)
-			if okp then
-				local n = 0
-				for _, p in parts do
-					if n >= 1400 then
-						break
-					end
-					if p:IsA("BasePart") and p.Transparency < 0.95 and not p:IsA("Terrain") then
-						local okc, c = pcall(function()
-							return p:Clone()
-						end)
-						if okc and c then
-							for _, d in c:GetDescendants() do
-								if not (d:IsA("SpecialMesh") or d:IsA("Decal") or d:IsA("Texture") or d:IsA("BlockMesh")) then
-									pcall(function()
-										d:Destroy()
-									end)
+			local buf = pendingClip[dataKey]
+			pendingClip[dataKey] = nil
+			if my ~= videoToken then
+				if g.Parent then
+					g:Destroy()
+				end
+				return
+			end
+			if not buf then error("Video data did not arrive") end
+			local frames = ReplayCodec.Decode(buf, meta.slots)
+			if #frames < 2 then
+				g:Destroy()
+				return
+			end
+			local cam = Instance.new("Camera")
+			cam.FieldOfView = 70
+			cam.Parent = vp
+			vp.CurrentCamera = cam
+			-- the place round the scene (copied from this machine's own map)
+			local center = typeof(meta.center) == "Vector3" and meta.center or Vector3.zero
+			require(script.Parent.ReplayGround).Copy(vp, center, 120)
+			local map = workspace:FindFirstChild("Map")
+			if map then
+				local op = OverlapParams.new()
+				op.FilterType = Enum.RaycastFilterType.Include
+				op.FilterDescendantsInstances = { map }
+				local okp, parts = pcall(function()
+					return workspace:GetPartBoundsInRadius(center, 120, op)
+				end)
+				if okp then
+					local n = 0
+					for _, p in parts do
+						if n >= 1400 then
+							break
+						end
+						if p:IsA("BasePart") and p.Transparency < 0.95 and not p:IsA("Terrain") then
+							local okc, c = pcall(function()
+								return p:Clone()
+							end)
+							if okc and c then
+								for _, d in c:GetDescendants() do
+									if not (d:IsA("SpecialMesh") or d:IsA("Decal") or d:IsA("Texture") or d:IsA("BlockMesh")) then
+										pcall(function()
+											d:Destroy()
+										end)
+									end
 								end
+								c.Anchored = true
+								c.Parent = vp
+								n += 1
 							end
-							c.Anchored = true
-							c.Parent = vp
-							n += 1
-						end
-						if n % 300 == 0 then
-							task.wait()
+							if n % 300 == 0 then
+								task.wait()
+							end
 						end
 					end
 				end
 			end
-		end
-		if my ~= videoToken then
-			g:Destroy()
-			Input.freeCursor = false
-			return
-		end
-		-- generic bodies for each actor (6 blocks)
-		local actors = typeof(meta.actors) == "table" and meta.actors or {}
-		local pieces = {}
-		local SIZES = { Vector3.new(1.2, 1.2, 1.2), Vector3.new(2, 2, 1), Vector3.new(1, 2, 1), Vector3.new(1, 2, 1), Vector3.new(1, 2, 1), Vector3.new(1, 2, 1) }
-		for ai, a in actors do
-			local function c3(t): Color3
-				return typeof(t) == "table" and Color3.fromRGB(t[1], t[2], t[3]) or Color3.fromRGB(150, 150, 150)
-			end
-			local cols = { c3(a.head), c3(a.torso), c3(a.arm), c3(a.arm), c3(a.leg), c3(a.leg) }
-			for r = 1, 6 do
-				local p = Instance.new("Part")
-				p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
-				p.Size = SIZES[r]
-				p.Color = cols[r]
-				p.Material = Enum.Material.SmoothPlastic
-				p.Parent = vp
-				pieces[(ai - 1) * 6 + r] = p
-			end
-		end
-		rec.Visible = true
-		local length = tonumber(meta.length) or frames[#frames].dt
-		local start = os.clock()
-		local fi = 1
-		while my == videoToken do
-			local t = os.clock() - start
-			if t > length then
-				break
-			end
-			while frames[fi + 1] and frames[fi + 1].dt <= t do
-				fi += 1
-			end
-			local fa = frames[fi]
-			local fb = frames[fi + 1] or fa
-			local k = fb.dt > fa.dt and math.clamp((t - fa.dt) / (fb.dt - fa.dt), 0, 1) or 0
-			local camcf = (ReplayCodec.OkCF(fa.cam) and ReplayCodec.OkCF(fb.cam) and fa.cam:Lerp(fb.cam, k)) or fa.cam or fb.cam
-			if camcf then
-				cam.CFrame = camcf
-			end
-			for s = 1, meta.slots do
-				local p = pieces[s]
-				if p then
-					local ca, cb = fa.cfs[s], fb.cfs[s]
-					local cf = (ca and cb and ca:Lerp(cb, k)) or ca or cb
-					if cf then
-						p.CFrame = cf
-						p.Transparency = 0
-					else
-						p.Transparency = 1
-					end
-				end
-			end
-			rec.Visible = (os.clock() % 1) < 0.6
-			RunService.RenderStepped:Wait()
-		end
-		if my == videoToken then
-			title.Text = "END"
-			rec.Visible = false
-			task.wait(1.2)
-			if my == videoToken and g.Parent then
+			if my ~= videoToken then
 				g:Destroy()
-				Input.freeCursor = false
+				return
 			end
-		end
+			-- generic bodies for each actor (6 blocks)
+			local actors = typeof(meta.actors) == "table" and meta.actors or {}
+			local pieces = {}
+			local SIZES = { Vector3.new(1.2, 1.2, 1.2), Vector3.new(2, 2, 1), Vector3.new(1, 2, 1), Vector3.new(1, 2, 1), Vector3.new(1, 2, 1), Vector3.new(1, 2, 1) }
+			for ai, a in actors do
+				local function c3(t): Color3
+					return typeof(t) == "table" and Color3.fromRGB(t[1], t[2], t[3]) or Color3.fromRGB(150, 150, 150)
+				end
+				local cols = { c3(a.head), c3(a.torso), c3(a.arm), c3(a.arm), c3(a.leg), c3(a.leg) }
+				for r = 1, 6 do
+					local p = Instance.new("Part")
+					p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+					p.Size = SIZES[r]
+					p.Color = cols[r]
+					p.Material = Enum.Material.SmoothPlastic
+					p.Parent = vp
+					pieces[(ai - 1) * 6 + r] = p
+				end
+			end
+			rec.Visible = true
+			local length = tonumber(meta.length) or frames[#frames].dt
+			local start = os.clock()
+			local fi = 1
+			while my == videoToken do
+				local t = os.clock() - start
+				if t > length then
+					break
+				end
+				while frames[fi + 1] and frames[fi + 1].dt <= t do
+					fi += 1
+				end
+				local fa = frames[fi]
+				local fb = frames[fi + 1] or fa
+				local k = fb.dt > fa.dt and math.clamp((t - fa.dt) / (fb.dt - fa.dt), 0, 1) or 0
+				local camcf = (ReplayCodec.OkCF(fa.cam) and ReplayCodec.OkCF(fb.cam) and fa.cam:Lerp(fb.cam, k)) or fa.cam or fb.cam
+				if camcf then
+					cam.CFrame = camcf
+				end
+				for s = 1, meta.slots do
+					local p = pieces[s]
+					if p then
+						local ca, cb = fa.cfs[s], fb.cfs[s]
+						local cf = (ca and cb and ca:Lerp(cb, k)) or ca or cb
+						if cf then
+							p.CFrame = cf
+							p.Transparency = 0
+						else
+							p.Transparency = 1
+						end
+					end
+				end
+				rec.Visible = (os.clock() % 1) < 0.6
+				RunService.RenderStepped:Wait()
+			end
+			if my == videoToken then
+				title.Text = "END"
+				rec.Visible = false
+				task.wait(1.2)
+				if my == videoToken and g.Parent then
+					g:Destroy()
+				end
+			end
+		end)
+		if not ok and my == videoToken then warn("[Ragdoll video]", err); toast("VIDEO COULD NOT PLAY. TRY AGAIN.", RED) end
+		cleanup()
 	end)
 end
 
@@ -1195,6 +1221,7 @@ function ChipClient.Init()
 			playVideo(a)
 		elseif action == "videodata" and typeof(a) == "string" and typeof(b) == "buffer" then
 			pendingClip[a] = b
+			task.delay(30, function() if pendingClip[a] == b then pendingClip[a] = nil end end)
 		end
 	end)
 

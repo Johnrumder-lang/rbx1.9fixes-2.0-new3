@@ -8,18 +8,21 @@ local memories, phantoms, nextEpisode, nextFault, nextStrike = {}, {}, {}, {}, {
 local sequence = 0
 local deps, remote
 local rng = Random.new()
-local function severity(p)
-	if workspace:GetAttribute("PsychosisOff") then return 0 end
-	if p:GetAttribute("AdminPsychoEnabled") ~= true and (Items.IsOwner(p) or (p.Character and p.Character:GetAttribute("Colossus"))) then return 0 end
-	return math.clamp(math.max(p:GetAttribute("CyPsycho") or 0, p:GetAttribute("SandevistanPsycho") or 0), 0, 1)
-end
+local severity = require(ReplicatedStorage.Shared.PsychosisState).Level
+local faults, affected = {}, {}
 local function torso(p)
 	local ch = p.Character
 	return ch and not ch:GetAttribute("Dead") and ch:FindFirstChild("Torso")
 end
-local function clear(p)
+local function clear(p, reset)
 	phantoms[p] = nil
-	if p.Parent then remote:FireClient(p, "clear") end
+	if reset then
+		for _, fault in faults[p] or {} do
+			if fault.ch.Parent and fault.ch:GetAttribute(fault.key) == fault.value then fault.ch:SetAttribute(fault.key, fault.previous) end
+		end
+		faults[p], affected[p] = nil, nil
+	end
+	if p.Parent then remote:FireClient(p, reset and "reset" or "clear") end
 end
 local function spawnMemory(p, level)
 	local root = torso(p)
@@ -83,11 +86,11 @@ function Service.Init(d)
 		end
 	end
 	local function hook(p)
-		p.CharacterAdded:Connect(function() clear(p) end)
+		p.CharacterAdded:Connect(function() clear(p, true) end)
 	end
 	Players.PlayerAdded:Connect(hook); for _, p in Players:GetPlayers() do hook(p) end
 	Players.PlayerRemoving:Connect(function(p)
-		memories[p], phantoms[p], nextEpisode[p], nextFault[p], nextStrike[p] = nil, nil, nil, nil, nil
+		memories[p], phantoms[p], nextEpisode[p], nextFault[p], nextStrike[p], faults[p], affected[p] = nil, nil, nil, nil, nil, nil, nil
 	end)
 	task.spawn(function()
 		while true do
@@ -95,7 +98,8 @@ function Service.Init(d)
 			local now = workspace:GetServerTimeNow()
 			for _, p in Players:GetPlayers() do
 				local level, root = severity(p), torso(p)
-				if level < 0.25 or not root then if phantoms[p] then clear(p) end; continue end
+				if level < 0.25 or not root then if affected[p] or phantoms[p] then clear(p, true) end; continue end
+				affected[p] = true
 				if phantoms[p] and phantoms[p].untilT <= now then clear(p) end
 				if now >= (nextEpisode[p] or 0) then
 					nextEpisode[p] = now + rng:NextNumber(12, 22) * (1.4 - level)
@@ -107,14 +111,21 @@ function Service.Init(d)
 					local ch = p.Character
 					local duration = 1.5 + 3 * level
 					local choice = rng:NextInteger(1, 3)
+					local old = {}
+					for _, key in { "ChipsDisabled", "ChipCrawl", "ChipCrawlUntil", "ChipGrabLock" } do old[key] = ch:GetAttribute(key) end
 					if choice == 1 then ch:SetAttribute("ChipsDisabled", math.max(ch:GetAttribute("ChipsDisabled") or 0, now + duration))
 					elseif choice == 2 then ch:SetAttribute("ChipCrawl", 0.25); ch:SetAttribute("ChipCrawlUntil", now + duration)
 					else
 						ch:SetAttribute("ChipGrabLock", now + duration)
 						for _, item in deps.OwnershipService.HeldItems(p) do deps.OwnershipService.DropItem(item) end
 					end
+					faults[p] = {}
+					for _, key in choice == 1 and { "ChipsDisabled" } or (choice == 2 and { "ChipCrawl", "ChipCrawlUntil" } or { "ChipGrabLock" }) do
+						if ch:GetAttribute(key) ~= old[key] then table.insert(faults[p], { ch = ch, key = key, value = ch:GetAttribute(key), previous = old[key] }) end
+					end
 					remote:FireClient(p, "fault", choice, duration)
 					if level >= 0.8 then
+						ch:SetAttribute("CrashOutSource", "psychosis")
 						ch:SetAttribute("CrashOut", now + 8)
 						deps.CyberService.Remote:FireClient(p, "crash", 8, "neural overload")
 					end

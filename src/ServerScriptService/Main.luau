@@ -554,4 +554,8 @@ require(Modules:WaitForChild("PsychosisService")).Init({ DamageService = DamageS
 
 require(Modules.ControlService).Init({ DamageService = DamageService, OwnershipService = OwnershipService, PropService = PropService, GunService = GunService, ItemService = ItemService })
 
+require(Modules.ClanService).Init()
+require(Modules.DailyRewardService).Init({ SkinService = require(Modules.SkinService), PropService = PropService,
+	PropBuilders = require(Modules.PropBuilders), RipperdocService = require(Modules.RipperdocService), OwnershipService = OwnershipService })
+
 print(string.format("[%s %s] server ready", Config.GameName, Config.Version))

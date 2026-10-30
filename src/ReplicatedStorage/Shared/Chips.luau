@@ -1,10 +1,10 @@
 --!strict
 -- Chips (v2.9): the catalog of neck chips for the cyberdeck. All names and effects are made up for this game
 -- (a cyberpunk sandbox), like the implants in Shared/Cyberware.
---   * a body has Config.ChipSlots (4) neck slots. A chip sits in one slot.
+--   * a body has Config.ChipSlots (6) neck slots. A chip sits in one slot.
 --   * KINDS:
 --       "combat"   a fast skill that works on its own or on a toggle (REFLEX BUFFER dodges bullets, ZOOM, SCANNER).
---       "net"      a NETRUNNER QUICKHACK: aimed at a person in the netrunner interface (K). It lands only if your
+--       "net"      a NETRUNNER QUICKHACK: aimed at a person in the netrunner interface (F4). It lands only if your
 --                  tier is higher than their FIREWALL tier (a FIREWALL chip). A higher tier does more.
 --       "firewall" passive defence: antivirus + quickhack resistance. A virus / quickhack of this tier or lower bounces.
 --       "capacity" passive: +cyberware tolerance (so more implants fit without cyberpsychosis).
@@ -60,7 +60,7 @@ Chips.List = {
 		info = "An identify routine. Draws a box round everything you see. Toggle it in the cyberdeck (K).",
 		ability = "SCAN", color = { 120, 255, 200 },
 	},
-	-- netrunner quickhacks (aimed at a person in the netrunner interface, K)
+	-- netrunner quickhacks (aimed at a person in the netrunner interface, F4)
 	{
 		id = "burnout", name = "BURNOUT", kind = "net", tiers = 3,
 		price = { 500, 1200, 2600 },

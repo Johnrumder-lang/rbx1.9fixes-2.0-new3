@@ -411,15 +411,11 @@ end
 ------------------------------------------------------------------------
 
 local function psychosisStep(p: Player, st: Implant)
-	if workspace:GetAttribute("PsychosisOff") or ((not st.real or Items.IsOwner(p)) and p:GetAttribute("AdminPsychoEnabled") ~= true) then
-		return -- (admins are immune; an admin who never got an implant has none to go wrong)
-	end
-	local char = alive(p)
-	if not char then
-		return
-	end
-	st.level = math.min(100, st.level + 0.2)
-	p:SetAttribute("SandevistanPsycho", st.level / 100) -- (slowly turning)
+	-- Sandevistan no longer builds a hidden, capacity-independent second meter.
+	local level = require(Shared.PsychosisState).Level(p)
+	st.level = level * 100
+	p:SetAttribute("SandevistanPsycho", nil)
+	if level <= 0 or not st.real or not alive(p) then return end
 	local now = os.clock()
 	if now < st.nextEpisode or st.level < 12 or now < st.activeUntil then
 		return

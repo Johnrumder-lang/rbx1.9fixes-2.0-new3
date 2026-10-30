@@ -62,7 +62,7 @@ end
 local function psychosis(dur: number)
 	task.spawn(function()
 		local t0 = os.clock()
-		while os.clock() - t0 < dur do
+		while os.clock() - t0 < dur and require(game.ReplicatedStorage.Shared.PsychosisState).Level(player) > 0 do
 			for _, c in glitchHolder:GetChildren() do
 				c:Destroy()
 			end
@@ -249,8 +249,9 @@ function SandevistanClient.Init()
 		elseif action == "flash" then
 			flash(tonumber(a) or 0.5, tostring(b))
 		elseif action == "psycho" then
+			if require(game.ReplicatedStorage.Shared.PsychosisState).Level(player) <= 0 then return end
 			-- cyberpsychosis: you start to SEE things (the game's own hallucinations: watchers, crawlers, whispers, writing on the walls)
-			Hallucinations.Force(tonumber(a) or 14, tonumber(b) or 0.3)
+			Hallucinations.Force(tonumber(a) or 14, tonumber(b) or 0.3, "overload")
 			psychosis(1.2)
 			toast("...something is wrong.")
 		end

@@ -1,0 +1,60 @@
+do
+ @CHIPCONFIG@
+ local p=player(261,vec(0,0,0));Players.list={p}
+ local events={}
+ local own={ItemHolder=function(item) return item.Parent and p or nil end,DropItem=function() end}
+ Chip._setup({OwnershipService=own},{FireClient=function(_,_,action) table.insert(events,action) end})
+ Chip._states[p]={slots={},bag={},dodgeLeft=0,dodgeRefill=0}
+ local blank=object("Model");blank:SetAttribute("Item","chip")
+ Chip.PlayHeld(p,blank)
+ eq(Chip._states[p].bag[1].id,"blank","spawn-menu chip without metadata stows with F")
+ check(not blank.Parent,"spawned blank chip consumed only once")
+ for _,def in Chips.List do
+  local item=object("Model");item:SetAttribute("Item","chip");item:SetAttribute("ChipId",def.id)
+  local before=#Chip._states[p].bag
+  Chip.PlayHeld(p,item)
+  eq(#Chip._states[p].bag,before+1,"F stows chip kind "..def.id)
+  eq(Chip._states[p].bag[#Chip._states[p].bag].kind,def.kind,"chip catalog supplies missing kind "..def.id)
+ end
+ for _,id in {"video","virus"} do
+  local item=object("Model");item:SetAttribute("Item","chip");item:SetAttribute("ChipId",id)
+  Chip.PlayHeld(p,item);eq(Chip._states[p].bag[#Chip._states[p].bag].id,id,"F accepts "..id.." chips")
+ end
+ local chip=Chip.Give(p,"scan",1)
+ eq(Chip.Install(p,chip.uid,6),nil,"sixth chip slot usable")
+ Chip.Eject(p,6);eq(Chip._states[p].slots[6],nil,"scanner ejects from slot 6")
+ local zoom=Chip.Give(p,"zoom",1);eq(Chip.Install(p,zoom.uid,5),nil,"zoom installs")
+ Chip.Eject(p,5);eq(Chip._states[p].slots[5],nil,"zoom ejects")
+ check(Chip.Install(p,zoom.uid,7)~=nil,"slot 7 rejected")
+ check(Chip.Install(p,zoom.uid,1.5)~=nil,"fractional slot rejected")
+ eq(Config.ChipSlots,6,"equipped chip maximum is six")
+end
+do
+ local queued={};local previousDelay=task.delay;task.delay=function(delay,fn) table.insert(queued,{delay,fn}) end
+ local blocked=false;local previousRay=workspace.Raycast;workspace.Raycast=function() return blocked and {Instance={IsDescendantOf=function() return false end}} or nil end
+ Config.NetRange=160
+ local p=player(271,vec(0,0,0));local victim=player(272,vec(5,0,0),true);Players.list={p,victim}
+ local damage=0
+ Chip._setup({DamageService={Protected=function() return false end,ApplyDamage=function() damage+=1 end},GoreService={FX=function() end,Sound=function() end}},{FireClient=function() end,FireAllClients=function() end})
+ Chip._states[p]={slots={},bag={},dodgeLeft=0,dodgeRefill=0};Chip._states[victim]={slots={},bag={},dodgeLeft=0,dodgeRefill=0}
+ for i=1,5 do Chip._states[p].slots[i]={id="burnout",kind="net",tier=1} end
+ Chip.Quickhack(p,1,victim.UserId)
+ eq(damage,0,"quickhack causes no immediate damage");eq(queued[1][1],5,"quickhack upload takes exactly 5 seconds")
+ queued[1][2]();eq(damage,1,"quickhack activates after upload, including admin target")
+ Chip.Quickhack(p,2,victim.UserId);blocked=true;queued[2][2]();eq(damage,1,"wall at activation cancels upload")
+ blocked=false;Chip.Quickhack(p,3,victim.UserId);Chip.Eject(p,3);queued[3][2]();eq(damage,1,"eject during upload cancels hack")
+ Chip.Quickhack(p,4,victim.UserId);victim.Character=object("Model");queued[4][2]();eq(damage,1,"target respawn cannot receive old upload")
+ task.delay=previousDelay;workspace.Raycast=previousRay
+end
+do
+ local RewardService={}
+ @CODES@
+ eq(RewardService.CODES["2.0"],nil,"2.0 code retired")
+ eq(RewardService.CODES.update2,nil,"previous update code retired")
+ check(RewardService.CODES.fixes.bundle,"fixes code enabled")
+ check(RewardService.CODES.netrunner and RewardService.CODES.chips,"requested recent codes retained")
+ local p=player(281,vec(0,0,0));local prof=profile();Persist._setup(p,prof,{UpdateAsync=function(_,_,fn) return fn(nil) end})
+ check(Persist.ClaimCode(p,"fixes",200,{"newskin"}),"fixes bundle can be redeemed")
+ eq(prof.cash,210,"fixes awards 200 cash");check(prof.owned.newskin,"fixes awards a skin")
+ check(not Persist.ClaimCode(p,"fixes",200,{"other"}),"fixes code redeemable once")
+end

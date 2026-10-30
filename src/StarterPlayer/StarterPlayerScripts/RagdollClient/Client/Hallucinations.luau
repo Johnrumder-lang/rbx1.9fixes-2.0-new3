@@ -42,6 +42,7 @@ local nextEvent = 0
 local nextBeat = 0
 local forcedUntil = 0 -- (v2.1) cyberpsychosis: hallucinations for a while, whether you are sick or not
 local forcedSev = 0
+local psychoUntil, psychoSev = 0, 0
 local tiltUntil = 0
 local tiltTarget = 0
 
@@ -667,12 +668,13 @@ end
 local function step(dt: number)
 	local char = player.Character
 	local now = os.clock()
-	local sick = char ~= nil and (char:GetAttribute("Sick") == true or now < forcedUntil) and not char:GetAttribute("Dead")
+	if require(game.ReplicatedStorage.Shared.PsychosisState).Level(player) <= 0 then psychoUntil = 0 end
+	local sick = char ~= nil and (char:GetAttribute("Sick") == true or now < forcedUntil or now < psychoUntil) and not char:GetAttribute("Dead")
 		and Settings.Get("hallucinations") == true
 	if sick ~= active then
 		active = sick
 		if active then
-			sickSince = (char:GetAttribute("Sick") == true) and now or (now - forcedSev * 90) -- (an episode starts as bad as the psychosis is)
+			sickSince = (char:GetAttribute("Sick") == true) and now or (now - math.max(now < forcedUntil and forcedSev or 0, now < psychoUntil and psychoSev or 0) * 90) -- (an episode starts as bad as the psychosis is)
 			nextEvent = now + rng:NextNumber(3, 6)
 		else
 			clearFigs()
@@ -718,7 +720,10 @@ local function step(dt: number)
 end
 
 -- (v2.1) the Sandevistan's cyberpsychosis: hallucinations for 'seconds', as bad as 'sev' (0..1)
-function Hallucinations.Force(seconds: number, sev: number)
+function Hallucinations.Force(seconds: number, sev: number, source: string?)
+	if source == "overload" then
+		psychoUntil = math.max(psychoUntil, os.clock() + seconds); psychoSev = math.clamp(sev, 0, 1); return
+	end
 	forcedUntil = math.max(forcedUntil, os.clock() + seconds)
 	forcedSev = math.clamp(sev, 0, 1)
 end

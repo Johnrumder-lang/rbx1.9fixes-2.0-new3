@@ -1,0 +1,22 @@
+do
+ local installed={optics=2,titan_L=1}
+ local CyberService={List=function() return table.clone(installed) end}
+ local Shared=shared
+ local Cyberware=(function()
+ @MODULE:Cyberware@
+ end)()
+ local Items={Has=function() return false end}
+ local Config={CyberRemoveShare=.2}
+ type Op={op:string,key:string?,id:string?,tier:number?,side:string?}
+ @RIPPER_CHECK@
+ local p=player(291,vec(0,0,0))
+ local ops,total,why=check(p,{{op="out",key="optics"}})
+ eq(#ops,1,"ripper accepts uninstall operation");eq(ops[1].key,"optics","ripper removes selected implant")
+ eq(total,math.floor(Cyberware.Price("optics",2)*.2),"ripper quotes removal price from installed tier")
+ eq(why,nil,"valid uninstall accepted")
+ local duplicates,price=check(p,{{op="out",key="optics"},{op="out",key="optics"}})
+ eq(#duplicates,1,"duplicate removals deduplicated");eq(price,total,"duplicate removal cannot double-charge")
+ local sideOps=check(p,{{op="out",key="titan_L"}});eq(sideOps[1].key,"titan_L","uninstall preserves selected arm side")
+ eq(check(p,{{op="out",key="missing"}}),nil,"cannot uninstall implant not owned")
+ eq(installed.optics,2,"quoting does not mutate actual implants before surgery")
+end

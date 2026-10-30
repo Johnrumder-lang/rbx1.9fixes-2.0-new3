@@ -1,10 +1,24 @@
-# Ragdoll Sandbox v3.1
+# Ragdoll Sandbox v3.2
 
-Open **[RagdollSandbox_v3_1.rbxlx](RagdollSandbox_v3_1.rbxlx)** with **File → Open from File** in Roblox Studio. This is the complete updated game. The previous version remains in Git history.
+Open **[RagdollSandbox_v3_2.rbxlx](RagdollSandbox_v3_2.rbxlx)** with **File → Open from File** in Roblox Studio. This is the complete updated game. The previous version remains in Git history.
 
 The startup now supports an unpublished Studio place using session-only progress. Published servers continue using persistent saves. Actual Roblox Studio multiplayer/visual testing is still required before publishing.
 
-## Controls and changes
+## New in v3.2
+
+- **M → CLANS**: create a filtered-name clan for **$2,500**, invite players in your server, accept/decline invitations, leave, remove members or disband as leader. Membership is saved; the clan name appears above the existing name/title. Up to 50 members; invitations expire after 5 minutes.
+- **M → DAILY**: automatic reward popup, one claim per UTC day. **Day 3 = 1 skin; day 7 = 3 skins**. Other days give **$25–1,000** with a **0.5%** chance of a tier 1 implant case. Cases remain saved until collected. Consecutive seven-day cycle; a missed day restarts day 1.
+- **Six equipped chip slots**. F stores every held chip type, including raw spawn-menu blank chips. Scanner and Zoom Optics have separate **ON/OFF** and **EJECT** buttons.
+- Quickhacks, including Blackwall uploads, activate after **5 seconds**. Ejecting the chip, respawning, losing range/line of sight or disabled chips cancels the upload. Virus incubation remains **15 seconds**.
+- **Ripperdoc → UNINSTALL CYBERWARE** lists installed implants with removal prices. Add a removal, sign the list and lie on the operating table.
+- `fixes` grants **$200 + 1 unowned weapon skin** once. `2.0` and `update2` are retired; already-owned rewards remain. `netrunner` and `chips` stay available.
+- Target-virus/rampage movement uses server-computed paths, waypoints, jumps and blocked/stuck-route recalculation. It only fires with a clear line of sight.
+- Replay ground skips uncloneable **Terrain**. Video playback now cleans up on skip, timeout, replacement and scene errors, with separate IDs for repeated playback.
+- Cyberpsychosis uses the visible overload meter. Exactly **23/23 capacity** is safe; Sandevistan no longer produces hidden psychosis independently of capacity. Admin immunity and explicit virus/quickhack attacks retain their separate rules.
+
+Clan/reward writes require a public server with saving available. Unpublished Studio supports session-only testing. The M menu uses two readable tab rows.
+
+## Existing controls and features
 
 - **F4** toggles quickhack targeting. Aim at a player, select with the mouse wheel, execute with **F**. **K** remains the chip inventory.
 - **F with a held chip** stores it and opens the deck; **SLOT / EJECT / TAKE** move it between slots, inventory and hand. Video chips have a **PLAY** button. While grabbing another player, F inserts the chip; target viruses first open a target chooser for the person inserting it.
@@ -21,9 +35,9 @@ See [Aenderungen_und_Steuerung.md](Aenderungen_und_Steuerung.md) for the German 
 
 ## Sources and validation
 
-`src/` contains all **159** scripts in their Roblox instance paths. The place already embeds them; no manual import is needed. `manifest.json` records their hashes, and `Pruefbericht.json` records the export checks.
+`src/` contains all **164** scripts in their Roblox instance paths. The place already embeds them; no manual import is needed. `manifest.json` records their hashes, and `Pruefbericht.json` records the export checks.
 
-The current export passes Luau compilation and **150 assertions** against current sources with mocked Roblox services. This covers unpublished startup, reset namespaces, PvP rewards/cooldowns, physical package requirements, virus incubation, target directives, gift permissions, dodge movement and blocked-hit feedback, plus earlier regression cases. It does not replace Roblox Studio physics, UI, DataStore and multiplayer tests.
+The current export passes Luau compilation and **371 assertions** against current sources with mocked Roblox services. This covers clans and daily transactions, chip storage/ejection and upload delay, uninstall quotes, navigation, replay cleanup, psychosis capacity boundaries, plus the earlier gameplay and admin regressions. It does not replace Roblox Studio physics, UI, DataStore and multiplayer tests.
 
 To regenerate the harnesses and sync changed sources into the place, install the official Luau CLI and run:
 
