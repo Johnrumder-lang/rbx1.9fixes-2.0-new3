@@ -14,7 +14,7 @@ s+=module('Chip',source('ChipService').replace('return ChipService\n','ChipServi
 s+='\nmodules.children.SaveGate={CanSave=function() return true end}\nmodules.children.ProgressEpoch={Key=function(id) return "p_"..id end}\nlocal previousService=game.GetService\ngame.GetService=function(self,name) if name=="RunService" then return {IsStudio=function() return false end} end return previousService(self,name) end\n'
 s+=module('Persist',source('Persist').replace('return Persist\n','Persist._save=save\nPersist._setup=function(p,prof,st) profiles[p]=prof;store=st end\nreturn Persist\n'))+case('transactions')
 s+=case('freeze').replace('@SUPER@',source('SuperService'))
-for name in ('epoch','jobs','defense','control','gifts','payload','dodge','psychosis','community','clans','daily','navigation','ground','video','camera','psycho_state','chip_updates','chip_ui','ripper'):
+for name in ('epoch','jobs','defense','control','gifts','payload','dodge','psychosis','community','clans','daily','navigation','ground','video','camera','psycho_state','chip_updates','chip_ui','mobile_chips','ripper'):
     text=case(name)
     import re
     for mod in re.findall(r'@MODULE:([A-Za-z]+)@',text):
@@ -37,6 +37,11 @@ for name in ('epoch','jobs','defense','control','gifts','payload','dodge','psych
         ui=source('ChipClient');text=text.replace('@SLOT_BUILD@',ui[ui.index('\t-- NECK SLOTS'):ui.index('\t-- CHIPS (the bag)')])
         start=ui.index('\t\t-- slots',ui.index('local function buildDeck'))
         text=text.replace('@SLOT_REFRESH@',ui[start:ui.index('\t\t-- the bag',start)])
+    if name=='mobile_chips':
+        ui=source('ChipClient');start=ui.index('local function storeHeldChip()')
+        text=text.replace('@MOBILE_BUILD@',ui[start:ui.index('\tpanel = UI.make("Frame",',start)]+'end\n')
+        start=ui.index('\tInput.Action:Connect(function(action)')
+        text=text.replace('@MOBILE_ACTION@',ui[start:ui.index('\tUserInputService.InputBegan:',start)])
     if name=='chip_updates':
         config=source('Config');lines=[line for line in config.splitlines() if line.startswith(('Config.ChipSlots =','Config.QuickhackDelay ='))]
         text=text.replace('@CHIPCONFIG@','\n'.join(lines))

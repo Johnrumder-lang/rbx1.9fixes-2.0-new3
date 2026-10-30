@@ -1,15 +1,15 @@
 {
-  "place": "RagdollSandbox_v3_2.rbxlx",
-  "scripts": 164,
-  "instances": 29991,
-  "new_modules_this_export": 5,
-  "changed_sources_this_export": 31,
-  "sha256": "e6c6ba353e72b9a6af3e2651fb6b5b828bf26247910df184efb1c4327715a2fb",
+  "place": "RagdollSandbox_v3_2_1.rbxlx",
+  "scripts": 165,
+  "instances": 29992,
+  "new_modules_this_export": 1,
+  "changed_sources_this_export": 4,
+  "sha256": "7dc607a7691f22e56208f9a53866bcb4535ae6f865f7d9d0539d2d26faebb343",
   "xml_and_references": "PASS",
   "original_world_properties": "PASS",
   "source_place_match": "PASS",
   "luau_compile": "PASS",
   "roblox_studio_multiplayer_visual_test": "NOT RUN: Studio unavailable in this environment",
-  "regression_assertions": 371,
+  "regression_assertions": 440,
   "regression_tests": "PASS (current sources; mocked Roblox services)"
 }

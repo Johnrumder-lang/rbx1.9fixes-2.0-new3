@@ -108,6 +108,8 @@ function MobileControls.Init(gui: ScreenGui)
 	-- (v2.0) weave (slip a punch) and spectate
 	tap(button(f, "Weave", "WEAVE", UDim2.new(1, -260, 0.5, -60), 44), "Weave")
 	tap(button(f, "Watch", "WATCH", UDim2.new(1, -260, 0.5, -4), 44), "Spectate")
+	-- Left edge, above the movement thumbstick; included in the saved touch layout.
+	tap(button(f, "Chips", "CHIPS", UDim2.new(0, 38, 0.5, -60), 52), "Chips")
 	local ok, Items = pcall(function()
 		return require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Items"))
 	end)

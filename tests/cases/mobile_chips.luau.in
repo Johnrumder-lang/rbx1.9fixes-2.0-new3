@@ -1,0 +1,106 @@
+do
+ local made={}
+ local UDim={new=function(s,o) return {Scale=s,Offset=o} end}
+ local UDim2={new=function(xs,xo,ys,yo) return {X=UDim.new(xs,xo),Y=UDim.new(ys,yo)} end}
+ UDim2.fromOffset=function(x,y) return UDim2.new(0,x,0,y) end
+ UDim2.fromScale=function(x,y) return UDim2.new(x,0,y,0) end
+ local Vector2={new=function(x,y) return {X=x,Y=y} end}
+ local Enum={ZIndexBehavior={Sibling=1},ScrollingDirection={Y=1},AutomaticSize={Y=1},SortOrder={LayoutOrder=1},TextTruncate={AtEnd=1}}
+ local uiScale=1
+ local UI={C={panel={},panel2={},panel3={},dim={}},Global=function() return uiScale end}
+ UI.make=function(class,props)
+  local o=object(class);o.list={};o.signals={};o.AbsoluteSize=Vector2.new(390,780)
+  function o:IsA(c) return c==class or c=="GuiObject" and (class=="Frame" or class=="TextButton" or class=="TextLabel" or class=="ScrollingFrame") end
+  function o:GetChildren() local out={};for _,v in self.list do if v.Parent then table.insert(out,v) end end;return out end
+  function o:GetPropertyChangedSignal(k) self.signals[k]=self.signals[k] or event();return self.signals[k] end
+  for k,v in props do o[k]=v end
+  if props.Parent and props.Parent.list then table.insert(props.Parent.list,o);if props.Name then props.Parent.children[props.Name]=o end end
+  table.insert(made,o);return o
+ end
+ UI.panel=function(props) return UI.make("Frame",props) end
+ UI.label=function(props) return UI.make("TextLabel",props) end
+ UI.button=function(props,fn) local b=UI.make("TextButton",props);b.click=fn;return b end
+ local Settings={Changed=event()}
+ local shared=object("Folder");shared.children={Config=Config,Chips=Chips,Settings=Settings}
+ local game={GetService=function() return {WaitForChild=function() return shared end} end}
+ local Modules=object("Folder");Modules.children.UI=UI
+ local script={Parent=Modules}
+ local MobileChipDeck=(function()
+@MODULE:MobileChipDeck@
+ end)()
+ Modules.children.MobileChipDeck=MobileChipDeck
+ local gui=object("ScreenGui");gui.DisplayOrder=26;gui.Parent=object("PlayerGui")
+ local panel,deckRefresh
+ local deckOpen=true
+ local deck={slots={false,false,false,false,false,false},bag={}}
+ local scanOn,zoomOn=false,false
+ local blocked=false
+ local Input={Action=event(),IsControlled=function() return blocked end}
+ local UserInputService={TouchEnabled=true,GetFocusedTextBox=function() return nil end}
+ local controller={hands={Left={},Right={}}}
+ local Items={IsOwner=function() return false end,Kind=function(i) return i.kind end}
+ local player=player(400,vec(0,0,0));player:SetAttribute("Cash",123)
+ local requests={};local Remote={FireServer=function(_,...) table.insert(requests,{...}) end}
+ local closed=0;local toggled=0
+ local ChipClient={CloseDeck=function() closed+=1 end,ToggleDeck=function() toggled+=1 end}
+ local warnings={};local RED={};local function toast(t) table.insert(warnings,t) end
+ local function firstFreeSlot() for i=1,Config.ChipSlots do if not deck.slots[i] then return i end end end
+@MOBILE_BUILD@
+ buildDeck();deckRefresh()
+ local inventory=panel.children.Inventory
+ local bag,slots=inventory.children.Bag,inventory.children.Slots
+ check(bag.Visible and not slots.Visible,"touch deck starts on bag page")
+ eq(inventory.children.SlotsTab.Text,"SLOTS 0/6","touch UI counts all six slots")
+ eq(#slots:GetChildren(),7,"six empty slot rows plus layout")
+ check(not slots.children.Row6.children.Eject,"empty touch slot has no eject action")
+ inventory.children.SlotsTab.click();check(slots.Visible and not bag.Visible,"slots tab responds to tap")
+ inventory.children.StoreHeld.click();eq(warnings[#warnings],"HOLD A CHIP FIRST","store with no held chip gives feedback")
+ check(bag.Visible,"store returns to the bag page")
+ local chip=object("Model");chip.kind="chip"
+ controller.hands.Right.grip={item=chip}
+ inventory.children.StoreHeld.click();eq(requests[#requests][1],"play","touch store uses validated storage action, not injection")
+ eq(requests[#requests][2],chip,"touch store finds right-hand chip")
+ controller.hands.Right.grip=nil;controller.hands.Left.grip={item=chip}
+ inventory.children.StoreHeld.click();eq(requests[#requests][2],chip,"touch store accepts left-hand chip")
+ local count=#requests;blocked=true;inventory.children.StoreHeld.click();eq(#requests,count,"controlled player cannot store a chip")
+ blocked=false
+ deck.bag={{uid=90,id="scan",kind="combat",tier=1},{uid=91,id="video",kind="video",video=true,tier=1}}
+ deck.slots[6]={id="zoom",kind="combat",tier=1};deckRefresh()
+ bag.children.Row1.children.Slot.click();eq(requests[#requests][1],"install","touch SLOT sends install")
+ eq(requests[#requests][2],90,"touch SLOT sends chip uid");eq(requests[#requests][3],1,"touch SLOT selects first free slot")
+ bag.children.Row1.children.Take.click();eq(requests[#requests][1],"take","touch TAKE sends hand request");eq(closed,1,"TAKE closes inventory")
+ bag.children.Row2.children.Play.click();eq(requests[#requests][1],"playbag","touch video PLAY stays available")
+ check(not bag.children.Row2.children.Slot,"video is not installed as a neck chip")
+ slots.children.Row6.children.Toggle.click();check(zoomOn,"touch zoom toggle works")
+ eq(slots.children.Row6.children.Toggle.Text,"TURN OFF","touch toggle label updates")
+ slots.children.Row6.children.Eject.click();check(not zoomOn,"touch eject disables zoom")
+ eq(requests[#requests][1],"eject","touch EJECT sends removal");eq(requests[#requests][2],6,"touch eject handles sixth slot")
+ deck.slots[5]={id="scan",tier=1};deckRefresh()
+ slots.children.Row5.children.Toggle.click();check(scanOn,"touch scanner toggle works")
+ slots.children.Row5.children.Eject.click();check(not scanOn,"touch eject disables scanner")
+ for i=1,6 do deck.slots[i]={id="scan",tier=1} end
+ deckRefresh();count=#requests;bag.children.Row1.children.Slot.click()
+ eq(#requests,count,"full touch deck cannot install a seventh chip");eq(warnings[#warnings],"NO FREE SLOT","full touch deck gives feedback")
+ for _,size in {{390,780},{780,340},{1024,720},{320,480}} do
+  for _,setting in {0.6,1,1.6} do
+   uiScale=setting;panel.AbsoluteSize=Vector2.new(size[1],size[2]);panel.signals.AbsoluteSize.callback()
+   local scale
+   for _,child in inventory:GetChildren() do if child.ClassName=="UIScale" then scale=child.Scale end end
+   check(inventory.Size.X.Offset*scale<=size[1]-15,"touch inventory fits viewport width")
+   check(inventory.Size.Y.Offset*scale<=size[2]-15,"touch inventory fits viewport height")
+   check(inventory.children.Close.Size.Y.Offset*scale>=44,"close stays finger-sized")
+  end
+ end
+ eq(bag.AutomaticCanvasSize,Enum.AutomaticSize.Y,"chip bag scrolls with inventory content")
+ eq(slots.AutomaticCanvasSize,Enum.AutomaticSize.Y,"all six slots remain scrollable on short screens")
+ inventory.children.Close.click();eq(closed,2,"touch close button exits deck")
+@MOBILE_ACTION@
+ Input.Action.callback("Chips");eq(toggled,1,"CHIPS touch action opens deck")
+ Input.Action.callback("Menu");eq(toggled,1,"other touch actions do not open deck")
+ for _,key in {"menuOpen","keysCaptured","cutscene","promptOpen","freeCam","spectating"} do
+  Input[key]=true;Input.Action.callback("Chips");Input[key]=false
+ end
+ blocked=true;Input.Action.callback("Chips");blocked=false
+ Input.freeCursor=true;deckOpen=false;Input.Action.callback("Chips")
+ eq(toggled,1,"touch deck respects gameplay locks and other open panels")
+end

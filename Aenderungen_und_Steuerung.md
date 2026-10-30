@@ -1,6 +1,14 @@
-# Ragdoll Sandbox v3.2
+# Ragdoll Sandbox v3.2.1
 
-Die vollständige Spiel-Datei ist `RagdollSandbox_v3_2.rbxlx`. In Roblox Studio über **File → Open from File** öffnen. Die Skriptquellen und die Datei sind synchronisiert; es wurde keine Roblox-Experience veröffentlicht und kein echter Spielstand zurückgesetzt.
+Die vollständige Spiel-Datei ist `RagdollSandbox_v3_2_1.rbxlx`. In Roblox Studio über **File → Open from File** öffnen. Die Skriptquellen und die Datei sind synchronisiert; es wurde keine Roblox-Experience veröffentlicht und kein echter Spielstand zurückgesetzt.
+
+## Neu in v3.2.1
+
+- **Mobiles Chip-Inventar:** **CHIPS** über dem linken Bewegungsstick antippen. Der Button lässt sich im vorhandenen Touch-Layout-Editor verschieben und speichern.
+- Getrennte, scrollbar bedienbare **CHIPS**- und **SLOTS**-Ansichten mit großen Tasten. Alle sechs Slots sind erreichbar; das Fenster passt sich Hochformat, Querformat, Tablets und den Bildschirmrändern an.
+- **STORE HELD CHIP** legt einen Chip aus der linken oder rechten Hand in die Tasche. **SLOT** setzt ihn ein, **EJECT** wirft ihn aus, **TAKE** nimmt ihn in die Hand und schließt das Inventar. Scanner/Zoom haben getrennte Schalter, Videos weiterhin **PLAY**. Die Einlagerungstaste setzt den Chip nicht versehentlich in einen gegriffenen Spieler ein.
+- Die vorhandenen Serverprüfungen und Steuerungssperren gelten auch für Touch. Tastatursteuerung über K/F bleibt bestehen.
+- Vor Veröffentlichung im Studio-Geräteemulator und auf einem Touchgerät prüfen: CHIPS öffnen/schließen, Handy drehen, lange Tasche und alle sechs Slots scrollen, Chip aus beiden Händen einlagern, SLOT/EJECT/TAKE sowie Scanner/Zoom/Video bedienen. Diese echten Touch- und Renderingtests konnten hier nicht ausgeführt werden.
 
 ## Neu in v3.2
 
@@ -68,7 +76,7 @@ Paket-Routen wählen verschiedene Start- und Zielorte aus Baustelle, rotem Haus,
 
 ## Prüfung und noch nötiger Studio-Test
 
-164 Skripte aus der exportierten Datei kompilieren. **371 Assertions** mit aktuellen Quellen und simulierten Roblox-Diensten bestehen. XML, Referenzen, Quellenübereinstimmung und Erhalt der bestehenden Welteigenschaften sind geprüft.
+165 Skripte aus der exportierten Datei kompilieren. **440 Assertions** mit aktuellen Quellen und simulierten Roblox-Diensten bestehen, einschließlich mobiler Inventaraktionen und Größenanpassung. XML, Referenzen, Quellenübereinstimmung und Erhalt der bestehenden Welteigenschaften sind geprüft.
 
 **Ein echter Roblox-Studio-/Mehrspieler-/Grafiktest wurde hier nicht ausgeführt.** Vor dem Veröffentlichen mit mindestens zwei Clients prüfen:
 

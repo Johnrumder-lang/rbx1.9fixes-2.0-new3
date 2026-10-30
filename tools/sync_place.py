@@ -5,11 +5,11 @@ import argparse, hashlib, json, re, subprocess, tempfile, xml.etree.ElementTree 
 ROOT = Path(__file__).resolve().parents[1]
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--input', type=Path)
-p.add_argument('--output', type=Path, default=ROOT/'RagdollSandbox_v3_2.rbxlx')
+p.add_argument('--output', type=Path, default=ROOT/'RagdollSandbox_v3_2_1.rbxlx')
 p.add_argument('--luau-compile', help='Official Luau compiler executable; compiles every exported script')
 p.add_argument('--luau', help='Official Luau interpreter executable; runs regenerated regression tests')
 args=p.parse_args()
-source=args.input or (args.output if args.output.exists() else ROOT/'RagdollSandbox_v3_1.rbxlx')
+source=args.input or (args.output if args.output.exists() else ROOT/'RagdollSandbox_v3_2.rbxlx')
 ET.register_namespace('xsi','http://www.w3.org/2001/XMLSchema-instance')
 tree=ET.parse(source);root=tree.getroot()
 items={};refs={}

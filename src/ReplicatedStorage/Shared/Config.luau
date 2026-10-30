@@ -4,7 +4,7 @@
 
 local Config = {}
 
-Config.Version = "v3.2"
+Config.Version = "v3.2.1"
 Config.GameName = "RAGDOLL SANDBOX"
 
 ------------------------------------------------------------------------

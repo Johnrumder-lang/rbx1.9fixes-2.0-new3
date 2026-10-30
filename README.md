@@ -1,8 +1,15 @@
-# Ragdoll Sandbox v3.2
+# Ragdoll Sandbox v3.2.1
 
-Open **[RagdollSandbox_v3_2.rbxlx](RagdollSandbox_v3_2.rbxlx)** with **File → Open from File** in Roblox Studio. This is the complete updated game. The previous version remains in Git history.
+Open **[RagdollSandbox_v3_2_1.rbxlx](RagdollSandbox_v3_2_1.rbxlx)** with **File → Open from File** in Roblox Studio. This is the complete updated game. The previous version remains in Git history.
 
 The startup now supports an unpublished Studio place using session-only progress. Published servers continue using persistent saves. Actual Roblox Studio multiplayer/visual testing is still required before publishing.
+
+## New in v3.2.1
+
+- **Mobile chip inventory:** tap the **CHIPS** button above the left thumbstick. Its position can be customized with the existing touch-button editor.
+- Separate **CHIPS** and **SLOTS** pages with scrolling, six equipped slots, and large touch buttons. The panel fits portrait/landscape phones and tablets inside the screen's safe area.
+- **STORE HELD CHIP** puts a chip from either hand into your bag. **SLOT** installs it, **EJECT** removes it, and **TAKE** returns it to your hand and closes the inventory. Scanner/Zoom keep separate toggles; video chips have **PLAY**.
+- The mobile inventory uses the existing server checks and respects forced-control/menu locks. Desktop **K** and **F** controls remain available.
 
 ## New in v3.2
 
@@ -35,9 +42,9 @@ See [Aenderungen_und_Steuerung.md](Aenderungen_und_Steuerung.md) for the German 
 
 ## Sources and validation
 
-`src/` contains all **164** scripts in their Roblox instance paths. The place already embeds them; no manual import is needed. `manifest.json` records their hashes, and `Pruefbericht.json` records the export checks.
+`src/` contains all **165** scripts in their Roblox instance paths. The place already embeds them; no manual import is needed. `manifest.json` records their hashes, and `Pruefbericht.json` records the export checks.
 
-The current export passes Luau compilation and **371 assertions** against current sources with mocked Roblox services. This covers clans and daily transactions, chip storage/ejection and upload delay, uninstall quotes, navigation, replay cleanup, psychosis capacity boundaries, plus the earlier gameplay and admin regressions. It does not replace Roblox Studio physics, UI, DataStore and multiplayer tests.
+The current export passes Luau compilation and **440 assertions** against current sources with mocked Roblox services. This includes mobile inventory actions, page switching, full-slot handling and layout dimensions across phone/tablet sizes, plus clans, daily transactions, chip storage/ejection and upload delay, uninstall quotes, navigation, replay cleanup, psychosis capacity boundaries, and earlier gameplay/admin regressions. It does not replace Roblox Studio physics, touch input, UI rendering, DataStore and multiplayer tests.
 
 To regenerate the harnesses and sync changed sources into the place, install the official Luau CLI and run:
 

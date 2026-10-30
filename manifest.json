@@ -17,7 +17,7 @@
   {
     "path": "/ReplicatedStorage/Shared/Config",
     "file": "src/ReplicatedStorage/Shared/Config.luau",
-    "sha256": "b9701f11c7d2ebbf67dedcd1ec11ee3040f30aadc9b8612be315b17181b5e478"
+    "sha256": "d090c9b0b3bc57c0a9febee7452a4773c8d92c6099c8a2283fdd3d12b4186b1e"
   },
   {
     "path": "/ReplicatedStorage/Shared/ContactSolver",
@@ -502,7 +502,7 @@
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ChipClient",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ChipClient.luau",
-    "sha256": "6ab976606881aacea86e3aea497c0c0bdfb11bfa680ad08ffd5b3c9ec5a02b00"
+    "sha256": "0b4b8b5c41596e41408e2da35df8ae287ffdc0d7967c3341b745d799e3a9997d"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/CommunityClient",
@@ -655,9 +655,14 @@
     "sha256": "679f33496a22218bc61086298aefbac45b31c7679f3170164869793c441c3505"
   },
   {
+    "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/MobileChipDeck",
+    "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/MobileChipDeck.luau",
+    "sha256": "1bedfeb8325ac0cafd7f1d7e739ab0cc110938158f7a7e0dddb37aa29b795583"
+  },
+  {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/MobileControls",
     "file": "src/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/MobileControls.luau",
-    "sha256": "bdb1397958b4b71578f50b09656531fb8d07bf81708c7f3164f115d2fdfe9fbf"
+    "sha256": "4d301cdfe368107bb8623a37d2957ae0d3ff14c78ed05e86a6bb2a5a2cc69737"
   },
   {
     "path": "/StarterPlayer/StarterPlayerScripts/RagdollClient/Client/ModeClient",

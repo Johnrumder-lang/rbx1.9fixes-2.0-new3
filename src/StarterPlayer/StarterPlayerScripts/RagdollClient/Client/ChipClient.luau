@@ -44,7 +44,7 @@ local controller: any = nil
 local gui: ScreenGui
 local rng = Random.new()
 
-local deck = { slots = { false, false, false, false }, bag = {} }
+local deck = { slots = table.create(Config.ChipSlots, false), bag = {} }
 local zoomOn, scanOn = false, false
 local selTarget: number? = nil
 
@@ -299,7 +299,52 @@ local function startHackControls()
 	end)
 end
 
+local function storeHeldChip()
+	if Input.IsControlled() or not controller or not controller.hands then return end
+	for _, side in { "Left", "Right" } do
+		local hand = controller.hands[side]
+		local item = hand and hand.grip and hand.grip.item
+		if item and item.Parent and Items.Kind(item) == "chip" then
+			-- The existing storage action checks ownership on the server. Never insert
+			-- into a grabbed player when the inventory's STORE button is tapped.
+			Remote:FireServer("play", item)
+			return
+		end
+	end
+	toast("HOLD A CHIP FIRST", RED)
+end
+
 local function buildDeck()
+	if UserInputService.TouchEnabled then
+		local mobile = require(Modules:WaitForChild("MobileChipDeck")).new(gui, {
+			close = function() ChipClient.CloseDeck() end,
+			storeHeld = storeHeldChip,
+			take = function(uid) Remote:FireServer("take", uid); ChipClient.CloseDeck() end,
+			play = function(uid) Remote:FireServer("playbag", uid) end,
+			install = function(uid)
+				local slot = firstFreeSlot()
+				if slot then Remote:FireServer("install", uid, slot) else toast("NO FREE SLOT", RED) end
+			end,
+			eject = function(slot)
+				local chip = deck.slots[slot]
+				if not chip then return end
+				if chip.id == "scan" then scanOn = false elseif chip.id == "zoom" then zoomOn = false end
+				Remote:FireServer("eject", slot)
+			end,
+			toggle = function(slot)
+				local chip = deck.slots[slot]
+				if not chip then return end
+				if chip.id == "scan" then scanOn = not scanOn elseif chip.id == "zoom" then zoomOn = not zoomOn end
+				if deckRefresh then deckRefresh() end
+			end,
+		})
+		panel = mobile.panel
+		deckRefresh = function()
+			mobile.refresh(deck, Items.IsOwner(player) and "ADMIN" or ("$" .. (player:GetAttribute("Cash") or 0)), scanOn, zoomOn)
+		end
+		player:GetAttributeChangedSignal("Cash"):Connect(function() if deckOpen then deckRefresh() end end)
+		return
+	end
 	panel = UI.make("Frame", {
 		Name = "Cyberdeck", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(820, 500),
 		BackgroundColor3 = PANEL, BackgroundTransparency = 0.04, BorderSizePixel = 0, Visible = false, ClipsDescendants = true, Parent = gui,
@@ -1226,6 +1271,13 @@ function ChipClient.Init()
 	end)
 
 	-- K: open the cyberdeck (unless you are an admin flying with the laser - then K is the laser)
+	Input.Action:Connect(function(action)
+		if action ~= "Chips" then return end
+		if Input.IsControlled() or Input.menuOpen or Input.keysCaptured or Input.cutscene or Input.promptOpen
+			or Input.freeCam or Input.spectating or UserInputService:GetFocusedTextBox() then return end
+		if Input.freeCursor and not deckOpen then return end
+		ChipClient.ToggleDeck()
+	end)
 	UserInputService.InputBegan:Connect(function(io, processed)
 		if Input.IsControlled() then return end
 		if processed or io.KeyCode ~= Enum.KeyCode.K then
